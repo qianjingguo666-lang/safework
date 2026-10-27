@@ -1,0 +1,29 @@
+# 本地开发用：一条命令启动 MySQL 和 Redis
+# 端口映射到 3307 / 6380，避免和你电脑上已安装的 MySQL / Redis 冲突
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: safework-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: safework123
+      TZ: Asia/Shanghai
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - mysql-data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    container_name: safework-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  mysql-data:
+  redis-data:
