@@ -28,12 +28,8 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 1. 登录校验
-        registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
-                .addPathPatterns("/**")
-                .excludePathPatterns(WHITE_LIST);
-
-        // 2. 已登录请求：从会话中取出租户 ID 放入 TenantContext，请求结束后清理
+        // 1. 先设置租户：已登录请求从会话中取出租户 ID 放入 TenantContext，请求结束后清理。
+        //    必须排在登录拦截器前面，因为 @SaCheckPermission 校验时会查数据库，需要租户信息
         registry.addInterceptor(new HandlerInterceptor() {
             @Override
             public boolean preHandle(HttpServletRequest req, HttpServletResponse resp, Object handler) {
@@ -52,6 +48,11 @@ public class WebConfig implements WebMvcConfigurer {
                 TenantContext.clear();
             }
         }).addPathPatterns("/**");
+
+        // 2. 登录校验 + 权限注解校验（@SaCheckPermission）
+        registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
+                .addPathPatterns("/**")
+                .excludePathPatterns(WHITE_LIST);
     }
 
     /** Long 转成字符串返回，避免前端 JS 雪花 ID 精度丢失 */

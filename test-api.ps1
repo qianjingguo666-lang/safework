@@ -1,5 +1,6 @@
-﻿# 第一阶段接口自测脚本：登录、获取当前用户、分页查询、租户隔离、未登录拦截
+﻿# 接口自测脚本（第一阶段 + RBAC 权限）
 # 运行方式（在项目根目录）：powershell -ExecutionPolicy Bypass -File .\test-api.ps1
+# 可以重复运行：每次新建的用户名都带时间戳，不依赖固定人数
 
 $ErrorActionPreference = 'Stop'
 $base = 'http://localhost:8080'
@@ -10,7 +11,7 @@ function Call($method, $path, $body, $token) {
     if ($token) { $headers['Authorization'] = "Bearer $token" }
     $params = @{ Uri = "$base$path"; Method = $method; Headers = $headers; UseBasicParsing = $true }
     if ($body) {
-        $params.Body = [Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json))
+        $params.Body = [Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 5))
         $params.ContentType = 'application/json; charset=utf-8'
     }
     $resp = Invoke-WebRequest @params
@@ -18,57 +19,88 @@ function Call($method, $path, $body, $token) {
     return $text | ConvertFrom-Json
 }
 
+function Login($tenant, $user) {
+    $r = Call POST '/auth/login' @{ tenantCode = $tenant; username = $user; password = 'admin123' }
+    if ($r.code -ne 200) { throw "登录失败 $tenant/$user：$($r.msg)" }
+    return $r.data.token
+}
+
 function Check($name, $ok) {
     if ($ok) { Write-Host "[通过] $name" -ForegroundColor Green }
     else     { Write-Host "[失败] $name" -ForegroundColor Red; $script:failed++ }
 }
+function Title($t) { Write-Host "`n=== $t ===" -ForegroundColor Cyan }
 $failed = 0
 
-Write-Host "`n=== 1. 健康检查 ===" -ForegroundColor Cyan
+Title '1. 健康检查'
 $r = Call GET '/actuator/health'
-Write-Host "status = $($r.status)"
-Check '服务已启动' ($r.status -eq 'UP')
+Check "服务已启动（status = $($r.status)）" ($r.status -eq 'UP')
 
-Write-Host "`n=== 2. 登录【演示化工】demo / admin ===" -ForegroundColor Cyan
-$r = Call POST '/auth/login' @{ tenantCode = 'demo'; username = 'admin'; password = 'admin123' }
-Write-Host "code = $($r.code), 企业 = $($r.data.tenantName), 昵称 = $($r.data.nickname)"
-Check '登录成功并拿到 token' ($r.code -eq 200 -and $r.data.token)
-$tokenDemo = $r.data.token
+Title '2. 演示化工 admin 登录，查看自己的权限'
+$tDemo = Login 'demo' 'admin'
+$r = Call GET '/auth/me' $null $tDemo
+Write-Host "角色 = $($r.data.roles -join ', ')   权限 = $($r.data.permissions -join ', ')"
+Write-Host "菜单 = $((@($r.data.menus) | ForEach-Object { $_.menuName }) -join ', ')"
+Check '企业管理员拥有全部权限 *' ($r.data.permissions -contains '*')
+Check '能看到 2 个顶级菜单' (@($r.data.menus).Count -eq 2)
+Check '不返回密码' (-not $r.data.user.password)
 
-Write-Host "`n=== 3. 获取当前登录用户 /auth/me ===" -ForegroundColor Cyan
-$r = Call GET '/auth/me' $null $tokenDemo
-Write-Host "用户名 = $($r.data.username), 昵称 = $($r.data.nickname)"
-Check '返回当前用户，且不返回密码' ($r.data.username -eq 'admin' -and -not $r.data.password)
+Title '3. 演示化工 zhangsan（安全员）登录'
+$tZhang = Login 'demo' 'zhangsan'
+$r = Call GET '/auth/me' $null $tZhang
+Write-Host "角色 = $($r.data.roles -join ', ')   权限 = $($r.data.permissions -join ', ')"
+Write-Host "菜单 = $((@($r.data.menus) | ForEach-Object { $_.menuName }) -join ', ')"
+Check '安全员有审批权限 ticket:approve' ($r.data.permissions -contains 'ticket:approve')
+Check '安全员没有申请权限 ticket:add' (-not ($r.data.permissions -contains 'ticket:add'))
+Check '只能看到【作业管理】菜单' ((@($r.data.menus).Count -eq 1) -and ($r.data.menus[0].menuName -eq '作业管理'))
 
-Write-Host "`n=== 4. 演示化工的用户列表（应为 3 人） ===" -ForegroundColor Cyan
-$r = Call GET '/system/user/page?current=1&size=10' $null $tokenDemo
-$r.data.records | ForEach-Object { Write-Host "  - $($_.username)  $($_.nickname)" }
-Check "只看到本企业用户（total = $($r.data.total)）" ($r.data.total -eq 3)
+Title '4. 安全员访问用户管理接口（应返回 403）'
+$r = Call GET '/system/user/page' $null $tZhang
+Write-Host "code = $($r.code), msg = $($r.msg)"
+Check '无权限被拦截' ($r.code -eq 403)
 
-Write-Host "`n=== 5. 登录【测试冶金】test / admin，查看用户列表（应为 2 人） ===" -ForegroundColor Cyan
-$r = Call POST '/auth/login' @{ tenantCode = 'test'; username = 'admin'; password = 'admin123' }
-$tokenTest = $r.data.token
-$r = Call GET '/system/user/page' $null $tokenTest
-$r.data.records | ForEach-Object { Write-Host "  - $($_.username)  $($_.nickname)" }
-Check "租户隔离生效（total = $($r.data.total)）" ($r.data.total -eq 2)
+Title '5. 演示化工的角色列表'
+$r = Call GET '/system/role/list' $null $tDemo
+$r.data | ForEach-Object { Write-Host "  - [$($_.id)] $($_.roleCode)  $($_.roleName)" }
+Check '有 4 个预置角色' (@($r.data).Count -ge 4)
 
-Write-Host "`n=== 6. 在演示化工新增用户 zhaoliu ===" -ForegroundColor Cyan
-$r = Call POST '/system/user' @{ username = 'zhaoliu'; password = 'admin123'; nickname = 'zhaoliu' } $tokenDemo
-if ($r.code -ne 200) { Write-Host "  提示：$($r.msg)（重复运行脚本时出现属于正常）" }
-$r = Call GET '/system/user/page' $null $tokenDemo
-$r2 = Call GET '/system/user/page' $null $tokenTest
-Check "新用户只出现在演示化工（demo = $($r.data.total), test = $($r2.data.total)）" ($r.data.total -ge 4 -and $r2.data.total -eq 2)
+Title '6. 新建用户并分配【作业负责人】角色，新用户登录后应有申请权限'
+$newName = 'u' + (Get-Date -Format 'MMddHHmmss')
+$r = Call POST '/system/user' @{ username = $newName; password = 'admin123'; nickname = "测试用户$newName" } $tDemo
+Check "新建用户 $newName" ($r.code -eq 200)
+$newId = $r.data
+$r = Call PUT "/system/user/$newId/roles" @{ ids = @(13) } $tDemo
+Check '分配角色成功' ($r.code -eq 200)
+$tNew = Login 'demo' $newName
+$r = Call GET '/auth/me' $null $tNew
+Write-Host "角色 = $($r.data.roles -join ', ')   权限 = $($r.data.permissions -join ', ')"
+Check '新用户拥有 ticket:add' ($r.data.permissions -contains 'ticket:add')
 
-Write-Host "`n=== 7. 不带 token 访问（应被拦截） ===" -ForegroundColor Cyan
+Title '7. 租户隔离：测试冶金搜不到演示化工的新用户'
+$rDemo = Call GET "/system/user/page?keyword=$newName" $null $tDemo
+$tTest = Login 'test' 'admin'
+$rTest = Call GET "/system/user/page?keyword=$newName" $null $tTest
+Check "演示化工能搜到（$($rDemo.data.total)），测试冶金搜不到（$($rTest.data.total)）" ($rDemo.data.total -eq 1 -and $rTest.data.total -eq 0)
+
+Title '8. 越权测试：测试冶金管理员尝试使用演示化工的角色和用户'
+$r = Call PUT '/system/user/202/roles' @{ ids = @(12) } $tTest
+Write-Host "把演示化工的角色(12)分配给自己的用户：code = $($r.code), msg = $($r.msg)"
+Check '不能使用别的企业的角色' ($r.code -eq 400)
+$r = Call PUT '/system/user/103/roles' @{ ids = @(21) } $tTest
+Write-Host "修改演示化工的用户(103)：code = $($r.code), msg = $($r.msg)"
+Check '不能操作别的企业的用户' ($r.code -eq 404)
+
+Title '9. 不能给企业管理员角色分配菜单'
+$r = Call PUT '/system/role/11/menus' @{ ids = @(2) } $tDemo
+Write-Host "code = $($r.code), msg = $($r.msg)"
+Check '被拒绝' ($r.code -eq 400)
+
+Title '10. 未登录 / 错误密码'
 $r = Call GET '/system/user/page'
-Write-Host "code = $($r.code), msg = $($r.msg)"
-Check '未登录返回 401' ($r.code -eq 401)
-
-Write-Host "`n=== 8. 错误密码 ===" -ForegroundColor Cyan
+Check "未登录返回 401（$($r.msg)）" ($r.code -eq 401)
 $r = Call POST '/auth/login' @{ tenantCode = 'demo'; username = 'admin'; password = 'wrong' }
-Write-Host "code = $($r.code), msg = $($r.msg)"
-Check '密码错误被拒绝' ($r.code -eq 400)
+Check "错误密码被拒绝（$($r.msg)）" ($r.code -eq 400)
 
 Write-Host ''
-if ($failed -eq 0) { Write-Host '全部通过，第一阶段完成！' -ForegroundColor Green }
+if ($failed -eq 0) { Write-Host '全部通过，RBAC 权限完成！' -ForegroundColor Green }
 else { Write-Host "有 $failed 项失败，把上面的输出发给 Claude" -ForegroundColor Yellow }

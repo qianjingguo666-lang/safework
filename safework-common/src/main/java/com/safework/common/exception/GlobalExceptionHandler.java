@@ -1,6 +1,8 @@
 package com.safework.common.exception;
 
 import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
+import cn.dev33.satoken.exception.NotRoleException;
 import com.safework.common.core.R;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.FieldError;
@@ -20,6 +22,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotLoginException.class)
     public R<Void> handleNotLogin(NotLoginException e) {
         return R.fail(401, "未登录或登录已过期");
+    }
+
+    @ExceptionHandler({NotPermissionException.class, NotRoleException.class})
+    public R<Void> handleNoPermission(Exception e) {
+        return R.fail(403, "没有操作权限");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
