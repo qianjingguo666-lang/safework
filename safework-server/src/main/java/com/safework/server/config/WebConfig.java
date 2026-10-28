@@ -3,6 +3,8 @@ package com.safework.server.config;
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.safework.common.tenant.TenantContext;
 import com.safework.system.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +16,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Configuration
@@ -55,9 +58,17 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(WHITE_LIST);
     }
 
-    /** Long 转成字符串返回，避免前端 JS 雪花 ID 精度丢失 */
+    /**
+     * JSON 全局配置：
+     * 1. Long 转成字符串返回，避免前端 JS 雪花 ID 精度丢失
+     * 2. LocalDateTime 统一使用 yyyy-MM-dd HH:mm:ss 格式（入参和出参）
+     */
     @Bean
-    public Jackson2ObjectMapperBuilderCustomizer longToStringCustomizer() {
-        return builder -> builder.serializerByType(Long.class, ToStringSerializer.instance);
+    public Jackson2ObjectMapperBuilderCustomizer jsonCustomizer() {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return builder -> builder
+                .serializerByType(Long.class, ToStringSerializer.instance)
+                .serializers(new LocalDateTimeSerializer(fmt))
+                .deserializers(new LocalDateTimeDeserializer(fmt));
     }
 }

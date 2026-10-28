@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.handler.TenantLineHandler;
+import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import com.safework.common.exception.BizException;
@@ -47,6 +48,9 @@ public class MybatisPlusConfig {
 
         // 2. 分页插件：必须放在租户插件之后
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+
+        // 3. 乐观锁插件：实体上有 @Version 字段时，更新语句自动带上 version 条件并 +1
+        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         return interceptor;
     }
 
@@ -63,7 +67,9 @@ public class MybatisPlusConfig {
 
             @Override
             public void updateFill(MetaObject metaObject) {
-                strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
+                // 注意：strictUpdateFill 只在字段为空时才填充，先查后改的实体 updateTime 已有值，会导致不更新
+                // 所以这里直接覆盖
+                setFieldValByName("updateTime", LocalDateTime.now(), metaObject);
             }
         };
     }

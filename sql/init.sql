@@ -47,6 +47,7 @@ INSERT INTO sys_user (id, tenant_id, username, password, nickname, status, creat
 (101, 1, 'admin',   '$2a$10$nFCJI7WfF9.FAAF5XR9UTeP0TM0WDkPF0JQgrbNNEqgqIy04QgfDu', '演示企业管理员', 1, NOW(), NOW()),
 (102, 1, 'zhangsan','$2a$10$nFCJI7WfF9.FAAF5XR9UTeP0TM0WDkPF0JQgrbNNEqgqIy04QgfDu', '张三（安全员）', 1, NOW(), NOW()),
 (103, 1, 'lisi',    '$2a$10$nFCJI7WfF9.FAAF5XR9UTeP0TM0WDkPF0JQgrbNNEqgqIy04QgfDu', '李四（作业负责人）', 1, NOW(), NOW()),
+(104, 1, 'zhaoliu', '$2a$10$nFCJI7WfF9.FAAF5XR9UTeP0TM0WDkPF0JQgrbNNEqgqIy04QgfDu', '赵六（监护人）', 1, NOW(), NOW()),
 (201, 2, 'admin',   '$2a$10$nFCJI7WfF9.FAAF5XR9UTeP0TM0WDkPF0JQgrbNNEqgqIy04QgfDu', '测试企业管理员', 1, NOW(), NOW()),
 (202, 2, 'wangwu',  '$2a$10$nFCJI7WfF9.FAAF5XR9UTeP0TM0WDkPF0JQgrbNNEqgqIy04QgfDu', '王五（监护人）', 1, NOW(), NOW());
 
@@ -145,6 +146,7 @@ INSERT INTO sys_user_role (id, tenant_id, user_id, role_id) VALUES
 (1, 1, 101, 11),  -- 演示化工 admin    -> 企业管理员
 (2, 1, 102, 12),  -- 演示化工 zhangsan -> 安全员
 (3, 1, 103, 13),  -- 演示化工 lisi     -> 作业负责人
+(6, 1, 104, 14),  -- 演示化工 zhaoliu  -> 监护人
 (4, 2, 201, 21),  -- 测试冶金 admin    -> 企业管理员
 (5, 2, 202, 24);  -- 测试冶金 wangwu   -> 监护人
 
@@ -160,3 +162,59 @@ INSERT INTO sys_role_menu (id, tenant_id, role_id, menu_id) VALUES
 (11, 2, 22, 2), (12, 2, 22, 200), (13, 2, 22, 2002),
 (14, 2, 23, 2), (15, 2, 23, 200), (16, 2, 23, 2001),
 (17, 2, 24, 2), (18, 2, 24, 200);
+
+-- =====================================================================
+-- 第三部分：作业票、审批流
+-- =====================================================================
+
+DROP TABLE IF EXISTS work_ticket;
+CREATE TABLE work_ticket (
+    id                BIGINT        NOT NULL COMMENT '主键',
+    tenant_id         BIGINT        NOT NULL COMMENT '租户ID',
+    ticket_no         VARCHAR(32)   NOT NULL COMMENT '作业票编号',
+    ticket_type       VARCHAR(20)   NOT NULL COMMENT 'CONFINED_SPACE受限空间 HOT_WORK动火 HEIGHT高处',
+    title             VARCHAR(100)  NOT NULL COMMENT '作业名称',
+    location          VARCHAR(200)  NOT NULL COMMENT '作业地点',
+    work_content      VARCHAR(1000) NULL COMMENT '作业内容',
+    safety_measures   VARCHAR(2000) NULL COMMENT '安全措施',
+    plan_start_time   DATETIME      NOT NULL COMMENT '计划开始时间',
+    plan_end_time     DATETIME      NOT NULL COMMENT '计划结束时间',
+    actual_start_time DATETIME      NULL COMMENT '实际开始时间',
+    actual_end_time   DATETIME      NULL COMMENT '实际结束时间',
+    applicant_id      BIGINT        NOT NULL COMMENT '申请人（作业负责人）',
+    applicant_name    VARCHAR(50)   NULL,
+    guardian_id       BIGINT        NOT NULL COMMENT '监护人',
+    guardian_name     VARCHAR(50)   NULL,
+    approver_id       BIGINT        NULL COMMENT '审批人',
+    approver_name     VARCHAR(50)   NULL,
+    gas_oxygen        DECIMAL(5,2)  NULL COMMENT '氧含量 %VOL',
+    gas_lel           DECIMAL(5,2)  NULL COMMENT '可燃气体 %LEL',
+    gas_h2s           DECIMAL(6,2)  NULL COMMENT '硫化氢 mg/m3',
+    gas_check_time    DATETIME      NULL COMMENT '气体检测时间',
+    status            VARCHAR(20)   NOT NULL COMMENT '状态',
+    version           INT           NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    create_time       DATETIME      NULL,
+    update_time       DATETIME      NULL,
+    deleted           TINYINT       NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_tenant_ticket_no (tenant_id, ticket_no),
+    KEY idx_tenant_status (tenant_id, status),
+    KEY idx_applicant (tenant_id, applicant_id),
+    KEY idx_guardian (tenant_id, guardian_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='作业票';
+
+DROP TABLE IF EXISTS work_ticket_log;
+CREATE TABLE work_ticket_log (
+    id            BIGINT       NOT NULL COMMENT '主键',
+    tenant_id     BIGINT       NOT NULL COMMENT '租户ID',
+    ticket_id     BIGINT       NOT NULL COMMENT '作业票ID',
+    action        VARCHAR(20)  NOT NULL COMMENT '操作',
+    from_status   VARCHAR(20)  NULL COMMENT '操作前状态',
+    to_status     VARCHAR(20)  NULL COMMENT '操作后状态',
+    operator_id   BIGINT       NOT NULL COMMENT '操作人',
+    operator_name VARCHAR(50)  NULL,
+    comment       VARCHAR(500) NULL COMMENT '意见',
+    create_time   DATETIME     NULL,
+    PRIMARY KEY (id),
+    KEY idx_ticket (tenant_id, ticket_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='作业票操作记录';

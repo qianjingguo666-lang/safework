@@ -21,6 +21,7 @@
     <modules>
         <module>safework-common</module>
         <module>safework-system</module>
+        <module>safework-ticket</module>
         <module>safework-server</module>
     </modules>
 
@@ -41,6 +42,11 @@
             <dependency>
                 <groupId>com.safework</groupId>
                 <artifactId>safework-system</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.safework</groupId>
+                <artifactId>safework-ticket</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
