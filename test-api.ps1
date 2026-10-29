@@ -42,7 +42,7 @@ $r = Call GET '/auth/me' $null $tDemo
 Write-Host "角色 = $($r.data.roles -join ', ')   权限 = $($r.data.permissions -join ', ')"
 Write-Host "菜单 = $((@($r.data.menus) | ForEach-Object { $_.menuName }) -join ', ')"
 Check '企业管理员拥有全部权限 *' ($r.data.permissions -contains '*')
-Check '能看到 2 个顶级菜单' (@($r.data.menus).Count -eq 2)
+Check '能看到 3 个顶级菜单（作业、安全、系统）' (@($r.data.menus).Count -eq 3)
 Check '不返回密码' (-not $r.data.user.password)
 
 Title '3. 演示化工 zhangsan（安全员）登录'
@@ -52,7 +52,7 @@ Write-Host "角色 = $($r.data.roles -join ', ')   权限 = $($r.data.permission
 Write-Host "菜单 = $((@($r.data.menus) | ForEach-Object { $_.menuName }) -join ', ')"
 Check '安全员有审批权限 ticket:approve' ($r.data.permissions -contains 'ticket:approve')
 Check '安全员没有申请权限 ticket:add' (-not ($r.data.permissions -contains 'ticket:add'))
-Check '只能看到【作业管理】菜单' ((@($r.data.menus).Count -eq 1) -and ($r.data.menus[0].menuName -eq '作业管理'))
+Check '看不到【系统管理】菜单' (-not (@($r.data.menus) | Where-Object { $_.menuName -eq '系统管理' }))
 
 Title '4. 安全员访问用户管理接口（应返回 403）'
 $r = Call GET '/system/user/page' $null $tZhang

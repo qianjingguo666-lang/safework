@@ -25,6 +25,8 @@ public class WebConfig implements WebMvcConfigurer {
     /** 不需要登录的接口 */
     private static final List<String> WHITE_LIST = List.of(
             "/auth/login",
+            // 扫码查看受限空间：现场人员不需要登录
+            "/public/**",
             "/actuator/health",
             "/error"
     );

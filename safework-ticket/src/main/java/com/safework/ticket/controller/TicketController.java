@@ -2,7 +2,9 @@ package com.safework.ticket.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.safework.common.annotation.OperLog;
 import com.safework.common.core.R;
+import com.safework.system.entity.SysUser;
 import com.safework.ticket.dto.TicketActionDTO;
 import com.safework.ticket.dto.TicketDetailVO;
 import com.safework.ticket.dto.TicketQueryDTO;
@@ -18,6 +20,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 作业票接口。接口上的注解只控制“有没有这类功能权限”，
@@ -36,18 +40,27 @@ public class TicketController {
         return R.ok(ticketService.page(query));
     }
 
+    /** 监护人下拉列表（放在 /{id} 前面只是为了阅读顺序，Spring 会优先匹配固定路径） */
+    @SaCheckPermission("ticket:add")
+    @GetMapping("/guardians")
+    public R<List<SysUser>> guardians() {
+        return R.ok(ticketService.guardians());
+    }
+
     @SaCheckPermission("ticket:list")
     @GetMapping("/{id}")
     public R<TicketDetailVO> detail(@PathVariable Long id) {
         return R.ok(ticketService.detail(id));
     }
 
+    @OperLog(module = "作业票", action = "新建")
     @SaCheckPermission("ticket:add")
     @PostMapping
     public R<Long> create(@Valid @RequestBody TicketSaveDTO dto) {
         return R.ok(ticketService.create(dto));
     }
 
+    @OperLog(module = "作业票", action = "修改")
     @SaCheckPermission("ticket:add")
     @PutMapping("/{id}")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody TicketSaveDTO dto) {
@@ -55,6 +68,7 @@ public class TicketController {
         return R.ok();
     }
 
+    @OperLog(module = "作业票", action = "提交审批")
     @SaCheckPermission("ticket:add")
     @PostMapping("/{id}/submit")
     public R<Void> submit(@PathVariable Long id) {
@@ -62,6 +76,7 @@ public class TicketController {
         return R.ok();
     }
 
+    @OperLog(module = "作业票", action = "取消")
     @SaCheckPermission("ticket:add")
     @PostMapping("/{id}/cancel")
     public R<Void> cancel(@PathVariable Long id, @RequestBody(required = false) TicketActionDTO dto) {
@@ -69,6 +84,7 @@ public class TicketController {
         return R.ok();
     }
 
+    @OperLog(module = "作业票", action = "审批通过")
     @SaCheckPermission("ticket:approve")
     @PostMapping("/{id}/approve")
     public R<Void> approve(@PathVariable Long id, @RequestBody(required = false) TicketActionDTO dto) {
@@ -76,6 +92,7 @@ public class TicketController {
         return R.ok();
     }
 
+    @OperLog(module = "作业票", action = "驳回")
     @SaCheckPermission("ticket:approve")
     @PostMapping("/{id}/reject")
     public R<Void> reject(@PathVariable Long id, @RequestBody(required = false) TicketActionDTO dto) {
@@ -83,6 +100,7 @@ public class TicketController {
         return R.ok();
     }
 
+    @OperLog(module = "作业票", action = "开始作业")
     @SaCheckPermission("ticket:list")
     @PostMapping("/{id}/start")
     public R<Void> start(@PathVariable Long id, @RequestBody(required = false) TicketActionDTO dto) {
@@ -90,6 +108,7 @@ public class TicketController {
         return R.ok();
     }
 
+    @OperLog(module = "作业票", action = "作业完成")
     @SaCheckPermission("ticket:list")
     @PostMapping("/{id}/complete")
     public R<Void> complete(@PathVariable Long id, @RequestBody(required = false) TicketActionDTO dto) {

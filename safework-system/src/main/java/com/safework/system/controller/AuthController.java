@@ -1,7 +1,9 @@
 package com.safework.system.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.safework.common.annotation.OperLog;
 import com.safework.common.core.R;
+import com.safework.system.dto.ChangePasswordDTO;
 import com.safework.system.dto.LoginDTO;
 import com.safework.system.dto.LoginVO;
 import com.safework.system.dto.UserInfoVO;
@@ -44,6 +46,13 @@ public class AuthController {
     @PostMapping("/logout")
     public R<Void> logout() {
         StpUtil.logout();
+        return R.ok();
+    }
+
+    @OperLog(module = "个人中心", action = "修改密码", saveParams = false)
+    @PostMapping("/password")
+    public R<Void> changePassword(@Valid @RequestBody ChangePasswordDTO dto) {
+        userService.changePassword(dto.getOldPassword(), dto.getNewPassword());
         return R.ok();
     }
 }

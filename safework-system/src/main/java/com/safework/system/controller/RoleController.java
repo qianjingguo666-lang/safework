@@ -1,6 +1,7 @@
 package com.safework.system.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.safework.common.annotation.OperLog;
 import com.safework.common.core.R;
 import com.safework.system.dto.IdsDTO;
 import com.safework.system.dto.RoleCreateDTO;
@@ -31,6 +32,7 @@ public class RoleController {
         return R.ok(roleService.list());
     }
 
+    @OperLog(module = "角色管理", action = "新增角色")
     @SaCheckPermission("system:role:add")
     @PostMapping
     public R<Long> create(@Valid @RequestBody RoleCreateDTO dto) {
@@ -43,6 +45,7 @@ public class RoleController {
         return R.ok(roleService.getMenuIds(id));
     }
 
+    @OperLog(module = "角色管理", action = "分配权限")
     @SaCheckPermission("system:role:menu")
     @PutMapping("/{id}/menus")
     public R<Void> assignMenus(@PathVariable Long id, @Valid @RequestBody IdsDTO dto) {

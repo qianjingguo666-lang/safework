@@ -16,6 +16,11 @@
             <groupId>com.safework</groupId>
             <artifactId>safework-system</artifactId>
         </dependency>
+        <!-- 作业票关联受限空间 -->
+        <dependency>
+            <groupId>com.safework</groupId>
+            <artifactId>safework-safety</artifactId>
+        </dependency>
         <!-- 作业票编号用 Redis 自增生成 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -25,6 +25,8 @@ public class TicketSaveDTO {
     private LocalDateTime planStartTime;
     @NotNull(message = "计划结束时间不能为空")
     private LocalDateTime planEndTime;
+    /** 受限空间作业必须选择台账中的受限空间 */
+    private Long spaceId;
     @NotNull(message = "请选择监护人")
     private Long guardianId;
 

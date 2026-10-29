@@ -19,6 +19,9 @@ public class WorkTicket extends BaseEntity {
     /** 编号，如 SX20261028-0001 */
     private String ticketNo;
     private TicketType ticketType;
+    /** 关联的受限空间（受限空间作业必填） */
+    private Long spaceId;
+    private String spaceName;
     private String title;
     private String location;
     private String workContent;

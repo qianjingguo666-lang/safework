@@ -41,9 +41,10 @@ $tAdmin = Login 'demo' 'admin'
 $tTest  = Login 'test' 'admin'
 
 $now = Get-Date
-function NewTicket($type, $title, $guardian, $o2) {
+function NewTicket($type, $title, $guardian, $o2, $space = 1001) {
     $t = @{
         ticketType     = $type
+        spaceId        = $(if ($type -eq 'CONFINED_SPACE') { $space } else { $null })
         title          = $title
         location       = '1# 储罐区 T-101'
         workContent    = '储罐内部检修、清理'
@@ -76,6 +77,13 @@ $r = Call POST '/ticket' (NewTicket 'CONFINED_SPACE' '测试' 202 20.9) $tLisi; 
 Check '选别的企业的人当监护人被拒绝（查不到）' ($r.code -eq 404)
 $r = Call POST '/ticket' (NewTicket 'CONFINED_SPACE' '测试' 104 20.9) $tZhao; Show $r
 Check '监护人没有申请权限（403）' ($r.code -eq 403)
+
+$noSpace = NewTicket 'CONFINED_SPACE' '未选空间' 104 20.9
+$noSpace.spaceId = $null
+$idNoSpace = (Call POST '/ticket' $noSpace $tLisi).data
+$r = Call POST "/ticket/$idNoSpace/submit" $null $tLisi; Show $r
+Check '受限空间作业不选台账中的空间，不能提交' ($r.code -eq 400)
+Call POST "/ticket/$idNoSpace/cancel" @{} $tLisi | Out-Null
 
 Title '3. 提交审批；申请人不能自己审批'
 $r = Call POST "/ticket/$id1/submit" $null $tLisi; Show $r
@@ -142,6 +150,17 @@ $okCount = @($results | Where-Object { $_.code -eq 200 }).Count
 Check "两个请求只有 1 个成功（成功 $okCount 个）" ($okCount -eq 1)
 $logs = (Call GET "/ticket/$id2" $null $tAdmin).data.logs | Where-Object { $_.action -eq 'APPROVE' }
 Check '只产生 1 条审批记录' (@($logs).Count -eq 1)
+
+Title '8.5 同一受限空间、时间重叠，不能同时有两张有效作业票'
+$r = Call POST '/ticket' (NewTicket 'CONFINED_SPACE' '同空间第二张票' 104 20.9) $tLisi
+$id4 = $r.data
+Call POST "/ticket/$id4/submit" $null $tLisi | Out-Null
+$r = Call POST "/ticket/$id4/approve" @{ comment = '同意' } $tZhang; Show $r
+Check '时间冲突，批准被拒绝' ($r.code -eq 400)
+# 清理：取消这两张票，保证脚本可以重复运行
+Call POST "/ticket/$id2/cancel" @{ comment = '测试清理' } $tLisi | Out-Null
+Call POST "/ticket/$id4/cancel" @{ comment = '测试清理' } $tLisi | Out-Null
+Check '清理完成（已取消）' ((Status $id2 $tLisi) -eq 'CANCELLED' -and (Status $id4 $tLisi) -eq 'CANCELLED')
 
 Title '9. 管理员有全部权限，但也不能审批自己的票（职责分离）'
 $r = Call POST '/ticket' (NewTicket 'HEIGHT' '厂房屋顶检修' 104 $null) $tAdmin

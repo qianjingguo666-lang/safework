@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class UserCreateDTO {
     @NotBlank(message = "用户名不能为空")
@@ -14,4 +16,7 @@ public class UserCreateDTO {
     private String password;
     private String nickname;
     private String phone;
+    private Long deptId;
+    /** 可选：创建时直接分配角色 */
+    private List<Long> roleIds;
 }

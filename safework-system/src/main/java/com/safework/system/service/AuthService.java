@@ -22,6 +22,8 @@ public class AuthService {
 
     /** 登录后租户 ID 存在会话里的 key */
     public static final String SESSION_TENANT_ID = "tenantId";
+    /** 昵称也放进会话，记录操作日志时不用再查库 */
+    public static final String SESSION_NICKNAME = "nickname";
 
     private final SysTenantMapper tenantMapper;
     private final SysUserMapper userMapper;
@@ -60,6 +62,7 @@ public class AuthService {
         // 3. 登录，并把租户 ID 存进会话，后续请求从这里取
         StpUtil.login(user.getId());
         StpUtil.getSession().set(SESSION_TENANT_ID, tenant.getId());
+        StpUtil.getSession().set(SESSION_NICKNAME, user.getNickname());
 
         return new LoginVO(StpUtil.getTokenValue(), user.getId(), user.getNickname(),
                 tenant.getId(), tenant.getTenantName());

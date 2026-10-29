@@ -4,6 +4,8 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.common.exception.BizException;
+import com.safework.safety.entity.ConfinedSpace;
+import com.safework.safety.service.SpaceService;
 import com.safework.system.entity.SysUser;
 import com.safework.system.service.PermissionService;
 import com.safework.system.service.UserService;
@@ -15,6 +17,7 @@ import com.safework.ticket.entity.WorkTicket;
 import com.safework.ticket.entity.WorkTicketLog;
 import com.safework.ticket.enums.TicketAction;
 import com.safework.ticket.enums.TicketStatus;
+import com.safework.ticket.enums.TicketType;
 import com.safework.ticket.mapper.WorkTicketLogMapper;
 import com.safework.ticket.mapper.WorkTicketMapper;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +49,7 @@ public class TicketService {
     private final TicketNoGenerator ticketNoGenerator;
     private final UserService userService;
     private final PermissionService permissionService;
+    private final SpaceService spaceService;
 
     // ========================= 查询 =========================
 
@@ -83,6 +87,11 @@ public class TicketService {
                 .orderByAsc(WorkTicketLog::getCreateTime)
                 .orderByAsc(WorkTicketLog::getId));
         return new TicketDetailVO(t, logs, availableActions(t, me));
+    }
+
+    /** 当前企业的监护人列表，新建作业票时下拉选择 */
+    public List<SysUser> guardians() {
+        return userService.listByRoleCode(ROLE_GUARDIAN);
     }
 
     // ========================= 申请人操作 =========================
@@ -123,6 +132,9 @@ public class TicketService {
         if (!t.getPlanEndTime().isAfter(LocalDateTime.now())) {
             throw new BizException("计划结束时间已过，请修改计划时间");
         }
+        if (t.getTicketType() == TicketType.CONFINED_SPACE && t.getSpaceId() == null) {
+            throw new BizException("受限空间作业必须选择台账中的受限空间");
+        }
         if (t.getTicketType().isGasRequired()) {
             GasChecker.checkValues(t);
         }
@@ -144,6 +156,7 @@ public class TicketService {
         SysUser me = currentUser();
         WorkTicket t = load(id);
         requireNotApplicant(t, me);
+        checkSpaceConflict(t);
         t.setApproverId(me.getId());
         t.setApproverName(me.getNickname());
         fire(t, TicketAction.APPROVE, me, dto.getComment());
@@ -198,6 +211,28 @@ public class TicketService {
     }
 
     // ========================= 内部方法 =========================
+
+    /**
+     * 同一个受限空间，计划时间有重叠的有效作业票（已批准、作业中）只能有一张，
+     * 避免两个班组同时进入同一个空间、各自以为对方已经做好隔离。
+     * 时间重叠判断：A.开始 < B.结束 并且 A.结束 > B.开始
+     */
+    private void checkSpaceConflict(WorkTicket t) {
+        if (t.getSpaceId() == null) {
+            return;
+        }
+        List<WorkTicket> conflicts = ticketMapper.selectList(Wrappers.<WorkTicket>lambdaQuery()
+                .eq(WorkTicket::getSpaceId, t.getSpaceId())
+                .ne(WorkTicket::getId, t.getId())
+                .in(WorkTicket::getStatus, TicketStatus.APPROVED, TicketStatus.IN_PROGRESS)
+                .lt(WorkTicket::getPlanStartTime, t.getPlanEndTime())
+                .gt(WorkTicket::getPlanEndTime, t.getPlanStartTime()));
+        if (!conflicts.isEmpty()) {
+            WorkTicket c = conflicts.get(0);
+            throw new BizException("【" + t.getSpaceName() + "】在计划时间内已有有效作业票 " + c.getTicketNo()
+                    + "（" + c.getStatus().getLabel() + "），不能重复批准");
+        }
+    }
 
     /** 状态流转的唯一入口：校验 → 改状态 → 乐观锁更新 → 记日志 */
     private void fire(WorkTicket t, TicketAction action, SysUser me, String comment) {
@@ -255,6 +290,11 @@ public class TicketService {
             throw new BizException("所选人员【" + guardian.getNickname() + "】不是监护人");
         }
         t.setTicketType(dto.getTicketType());
+        if (dto.getTicketType() == TicketType.CONFINED_SPACE && dto.getSpaceId() != null) {
+            ConfinedSpace space = spaceService.getEnabled(dto.getSpaceId());
+            t.setSpaceId(space.getId());
+            t.setSpaceName(space.getSpaceName());
+        }
         t.setTitle(dto.getTitle());
         t.setLocation(dto.getLocation());
         t.setWorkContent(dto.getWorkContent());

@@ -18,6 +18,10 @@
         </dependency>
         <dependency>
             <groupId>com.safework</groupId>
+            <artifactId>safework-safety</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.safework</groupId>
             <artifactId>safework-ticket</artifactId>
         </dependency>
         <dependency>
