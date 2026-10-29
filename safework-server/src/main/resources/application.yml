@@ -80,6 +80,13 @@ safework:
     fail-window-minutes: 15
     lock-minutes: 15
 
+  # ============ 附件 ============
+  file:
+    # 本地存储目录（Docker 里挂载了数据卷 upload-data）
+    local-path: ${FILE_LOCAL_PATH:./data/uploads}
+    max-size-mb: 10
+    max-count-per-biz: 9
+
   # ============ 定时任务 ============
   job:
     # 关闭后不会自动执行，平台【定时任务】页面仍然可以手动执行

@@ -64,6 +64,9 @@
         </el-descriptions>
       </template>
 
+      <AttachmentPanel :key="`a-${t.id}-${t.status}`" biz-type="TICKET" :biz-id="t.id" tag="ATTACH" title="附件"
+                       empty-text="申请人、监护人可以上传作业方案、气体检测记录、现场照片（图片、PDF、Word、Excel）" />
+
       <h4>操作记录</h4>
       <el-timeline>
         <el-timeline-item v-for="l in logs" :key="l.id" :timestamp="l.createTime" placement="top">
@@ -100,6 +103,7 @@
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTicket, reviewTicket, ticketAction } from '@/api'
+import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import { useUserStore } from '@/stores/user'
 import { TICKET_ACTIONS, TICKET_STATUS, TICKET_TYPES } from '@/utils/dict'
 

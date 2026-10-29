@@ -8,7 +8,12 @@ import com.safework.safety.dto.SpaceOptionVO;
 import com.safework.safety.dto.SpaceQueryDTO;
 import com.safework.safety.dto.SpaceSaveDTO;
 import com.safework.safety.entity.ConfinedSpace;
+import com.safework.safety.excel.SafetyExcelService;
 import com.safework.safety.service.SpaceService;
+import com.safework.system.excel.ImportResult;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import com.safework.system.dto.StatusDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +33,27 @@ import java.util.List;
 public class SpaceController {
 
     private final SpaceService spaceService;
+    private final SafetyExcelService excelService;
+
+    @SaCheckPermission("safety:space:import")
+    @GetMapping("/export")
+    public void export(SpaceQueryDTO query, HttpServletResponse response) {
+        excelService.exportSpaces(query, response);
+    }
+
+    @SaCheckPermission("safety:space:import")
+    @GetMapping("/import-template")
+    public void template(HttpServletResponse response) {
+        excelService.spaceTemplate(response);
+    }
+
+    /** 批量导入：返回成功条数和每一行的错误 */
+    @OperLog(module = "受限空间", action = "导入台账")
+    @SaCheckPermission("safety:space:import")
+    @PostMapping("/import")
+    public R<ImportResult> importSpaces(@RequestParam("file") MultipartFile file) {
+        return R.ok(excelService.importSpaces(file));
+    }
 
     @SaCheckPermission("safety:space:list")
     @GetMapping("/page")

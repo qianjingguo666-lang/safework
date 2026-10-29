@@ -15,7 +15,7 @@
 | 2 | SaaS 平台端：企业开通、套餐、到期续费、停用 | ✅ 完成 |
 | 2 | 登录安全：图形验证码、失败锁定、登录日志、在线用户强制下线 | ✅ 完成 |
 | 2 | 消息通知（实时推送、待办提醒、通知公告）+ 定时任务（分布式锁、执行记录） | ✅ 完成 |
-| 2 | 文件上传（现场照片、附件）、数据看板 | 下一步 |
+| 2 | 附件（隐患现场 / 整改照片、作业票附件）、Excel 导入导出、数据看板（ECharts） | ✅ 完成 |
 | 3 | AI 知识库问答（RAG，流式输出、引用出处）、作业票 AI 预审 | ✅ 完成 |
 | 4 | Docker 部署（多阶段构建、Nginx 反向代理、一键发布、数据库备份） | ✅ 完成 |
 | 4 | 域名 + HTTPS、CI/CD | 下一步 |
@@ -24,7 +24,9 @@
 
 **后端**：Spring Boot 3.3 · MyBatis-Plus 3.5 · Sa-Token · MySQL 8 · Redis 7
 
-**前端**：Vue 3.5 · Vite 5 · Element Plus · Pinia · Vue Router · Axios
+**前端**：Vue 3.5 · Vite 5 · Element Plus · Pinia · Vue Router · Axios · ECharts 5（按需引入）
+
+**其他**：EasyExcel（导入导出）
 
 **AI**：讯飞星火（OpenAI 兼容接口）· 阿里云百炼向量模型 · PDFBox · SSE 流式输出
 
@@ -56,7 +58,8 @@ safework
 ├── test-system.ps1   部门、用户管理、操作日志自测脚本
 ├── test-ai.ps1       AI 知识库问答、预审、限流自测脚本
 ├── test-platform.ps1 平台端（开通企业、套餐）+ 登录安全自测脚本
-└── test-message.ps1  消息推送、业务通知、公告、定时任务自测脚本
+├── test-message.ps1  消息推送、业务通知、公告、定时任务自测脚本
+└── test-file.ps1     附件权限、Excel 导入导出、数据看板自测脚本
 ```
 
 采用**模块化单体**：业务按 Maven 模块划分、边界清晰，但只部署一个进程，适合 2 核 4G 的个人服务器。后续需要时可以把 AI 模块单独拆成服务。
@@ -187,6 +190,27 @@ safework
 - **提醒去重**：同一条隐患同一天只提醒一次（Redis 记录），手动多执行几次也不会重复发
 - **独立线程池**：调度器默认只有一个线程，一个任务卡住会拖住所有任务（包括消息心跳），所以单独配置了 4 个线程
 
+## 附件
+
+- **用在哪**：隐患现场照片（上报时）、整改后照片（整改时，验收人对照查看）、作业票附件（作业方案、气体检测记录）
+- **权限跟随单据**：能看隐患详情的人才能看它的照片；能处理当前环节的人才能上传（例如整改照片只有整改人、并且只在整改中阶段能传）。附件模块定义 `BizAccessChecker` 接口，隐患、作业票模块各自实现，附件模块不需要知道业务规则
+- **按文件内容识别类型**：读文件头几个字节（魔数）判断真实格式，只允许 jpg / png / webp / pdf / Word / Excel。把脚本改名成 .jpg 上传会被识别出来拒绝；下载时加 `X-Content-Type-Options: nosniff`
+- **存储**：文件名用随机 UUID（不用用户上传的文件名，防止路径穿越、覆盖），按 `企业/年月/` 分目录；存储路径不返回给前端，下载必须经过带权限校验的接口。`FileStorage` 是接口，现在是本地磁盘（Docker 挂数据卷），换 MinIO / OSS 只需要新写一个实现
+- **前端显示图片**：`<img>` 标签没法带 Authorization 请求头，所以用 axios 带 token 取回图片再转成 blob 地址显示
+
+## Excel 导入导出
+
+- **导出**（受限空间、隐患、作业票）：直接复用列表查询，**筛选条件、数据权限和列表完全一致**（监护人导出的只有和自己有关的作业票）
+- **导入**（受限空间台账）：下载模板（第二页是填写说明）→ 填写 → 上传。**先校验全部行，有任何一行错就一行都不导入**，把所有错误连同 Excel 行号一次性返回；全部正确才在一个事务里批量新增。部门、责任人按名称匹配，重名时提示手动选择
+- 表头按列名匹配，用户调整列顺序也能导入
+
+## 数据看板
+
+- 指标卡：作业票数、正在作业（涉及几个受限空间）、未闭环隐患（重大隐患）、逾期未整改、整改及时率、受限空间（高风险）
+- 图表：每天新建的作业票（按类型）、作业票状态、隐患上报与闭环趋势、隐患类别、受限空间风险等级；趋势图可以切换成表格查看
+- 统计全部在数据库里 `GROUP BY` 聚合，没有数据的日期补 0；SQL 不写 tenant_id，租户插件自动加上
+- 配色：作业类型用固定顺序的分类色（同一类型在所有图里颜色不变），风险等级用状态色并配文字；条形图数值直接标在末端
+
 ## AI 助手
 
 ### 知识库问答（RAG）
@@ -297,6 +321,10 @@ notepad config\secret.yml
 | PUT | /message/{id}/read、/message/read-all | 标记已读 | 登录即可 |
 | GET / POST / DELETE | /system/notice/page、/system/notice、/{id} | 通知公告 列表 / 发布 / 撤回 | system:notice:list、add |
 | GET / POST | /platform/job/list、/log/page、/{code}/run | 定时任务 / 执行记录 / 立即执行 | platform:job:list、run |
+| GET / POST / DELETE | /file/list、/file/upload、/file/{id} | 附件 列表 / 上传 / 预览下载 / 删除 | 跟随业务单据 |
+| GET / POST | /safety/space/export、/import-template、/import | 受限空间 导出 / 模板 / 导入 | safety:space:import |
+| GET | /safety/hazard/export、/ticket/export | 导出隐患、作业票台账 | safety:hazard:export、ticket:export |
+| GET | /dashboard/overview?days=30 | 数据看板 | dashboard:view |
 | GET | /actuator/health | 健康检查 | 否 |
 
 请求头：`Authorization: Bearer <token>`；时间格式：`yyyy-MM-dd HH:mm:ss`
@@ -339,6 +367,7 @@ powershell -ExecutionPolicy Bypass -File .\test-system.ps1
 powershell -ExecutionPolicy Bypass -File .\test-ai.ps1
 powershell -ExecutionPolicy Bypass -File .\test-platform.ps1
 powershell -ExecutionPolicy Bypass -File .\test-message.ps1
+powershell -ExecutionPolicy Bypass -File .\test-file.ps1
 ```
 
 已有数据库升级（保留原有数据）：
@@ -349,4 +378,6 @@ docker cp sql\upgrade\v2-platform-security.sql safework-mysql:/tmp/v2.sql
 docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v2.sql"
 docker cp sql\upgrade\v3-message-job.sql safework-mysql:/tmp/v3.sql
 docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v3.sql"
+docker cp sql\upgrade\v4-file-excel-dashboard.sql safework-mysql:/tmp/v4.sql
+docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v4.sql"
 ```

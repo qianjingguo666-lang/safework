@@ -12,8 +12,36 @@
                       placeholder="所属部门" clearable style="width: 160px" @change="search" />
       <el-button icon="Search" @click="search">查询</el-button>
       <div class="spacer" />
+      <el-button v-perm="'safety:space:import'" icon="Upload" @click="openImport">导入</el-button>
+      <el-button v-perm="'safety:space:import'" icon="Download" :loading="exporting" @click="doExport">导出</el-button>
       <el-button v-perm="'safety:space:add'" type="primary" icon="Plus" @click="openForm()">新增受限空间</el-button>
     </div>
+
+    <el-dialog v-model="importVisible" title="导入受限空间台账" width="600px">
+      <el-steps :active="importResult ? 2 : 1" finish-status="success" simple class="steps">
+        <el-step title="下载模板填写" /><el-step title="上传文件" /><el-step title="查看结果" />
+      </el-steps>
+      <div class="import-row">
+        <el-button icon="Download" @click="downloadTemplate">下载导入模板</el-button>
+        <span class="muted">模板第二页有填写说明</span>
+      </div>
+      <el-upload drag :show-file-list="false" accept=".xlsx,.xls" :http-request="doImport" :disabled="importing">
+        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+        <div class="el-upload__text">{{ importing ? '正在导入…' : '把填好的 Excel 拖到这里，或点击选择文件' }}</div>
+      </el-upload>
+      <template v-if="importResult">
+        <el-alert v-if="!importResult.errors.length" type="success" :closable="false" show-icon
+                  :title="`导入成功：共 ${importResult.success} 条`" class="result" />
+        <template v-else>
+          <el-alert type="error" :closable="false" show-icon class="result"
+                    :title="`共 ${importResult.total} 行，其中 ${importResult.errors.length} 行有错误，全部未导入。改完后重新上传`" />
+          <el-table :data="importResult.errors" size="small" max-height="260">
+            <el-table-column prop="row" label="Excel 行号" width="100" />
+            <el-table-column prop="message" label="问题" />
+          </el-table>
+        </template>
+      </template>
+    </el-dialog>
 
     <el-table v-loading="loading" :data="list" stripe>
       <el-table-column prop="spaceCode" label="编号" width="100" />
@@ -104,9 +132,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import QRCode from 'qrcode'
 import { useUserStore } from '@/stores/user'
 import {
-  changeSpaceStatus, createSpace, deptTree, getSpaceQrToken, pageSpaces, resetSpaceQrToken, updateSpace, userOptions
+  changeSpaceStatus, createSpace, deptTree, getSpaceQrToken, importSpaces, pageSpaces, resetSpaceQrToken, updateSpace, userOptions
 } from '@/api'
 import { RISK_LEVELS, SPACE_TYPES } from '@/utils/dict'
+import { downloadFile } from '@/utils/download'
 
 const store = useUserStore()
 const canEdit = computed(() => store.hasPerm('safety:space:edit'))
@@ -197,6 +226,38 @@ function downloadQr() {
   a.click()
 }
 
+// ---------- 导入导出 ----------
+const exporting = ref(false)
+const importVisible = ref(false)
+const importing = ref(false)
+const importResult = ref(null)
+const queryParams = () => Object.fromEntries(Object.entries(query).filter(([k, v]) => v !== '' && v != null && !['current', 'size'].includes(k)))
+async function doExport() {
+  exporting.value = true
+  try {
+    await downloadFile('/safety/space/export', queryParams(), '受限空间台账.xlsx')
+  } finally {
+    exporting.value = false
+  }
+}
+function openImport() {
+  importResult.value = null
+  importVisible.value = true
+}
+const downloadTemplate = () => downloadFile('/safety/space/import-template', {}, '受限空间台账导入模板.xlsx')
+async function doImport({ file }) {
+  importing.value = true
+  try {
+    importResult.value = await importSpaces(file)
+    if (!importResult.value.errors.length) {
+      ElMessage.success(`导入成功 ${importResult.value.success} 条`)
+      search()
+    }
+  } finally {
+    importing.value = false
+  }
+}
+
 onMounted(async () => {
   load()
   depts.value = await deptTree()
@@ -208,4 +269,8 @@ onMounted(async () => {
 .qr img { width: 260px; height: 260px; }
 .qr-name { font-weight: 600; margin: 8px 0; }
 .qr-tip { color: #888; font-size: 12px; margin-bottom: 8px; line-height: 1.6; }
+.steps { margin-bottom: 16px; }
+.import-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.muted { color: #999; font-size: 12px; }
+.result { margin: 12px 0 8px; }
 </style>

@@ -8,3 +8,5 @@ target/
 config/secret.yml
 start.ps1
 .env
+# 本地上传的附件
+data/

@@ -63,6 +63,9 @@ services:
       JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx512m -XX:+UseG1GC}
       # 生产环境不打印 SQL，日志级别改为 info
       LOGGING_LEVEL_COM_SAFEWORK: info
+    # 上传的附件（现场照片）存在这个数据卷里，重新部署不会丢
+    volumes:
+      - upload-data:/app/data
     depends_on:
       mysql:
         condition: service_healthy
@@ -81,3 +84,4 @@ services:
 volumes:
   mysql-data:
   redis-data:
+  upload-data:

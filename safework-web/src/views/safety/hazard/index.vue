@@ -11,6 +11,7 @@
       <el-checkbox v-model="query.overdue" @change="search">只看逾期</el-checkbox>
       <el-button icon="Search" @click="search">查询</el-button>
       <div class="spacer" />
+      <el-button v-perm="'safety:hazard:export'" icon="Download" :loading="exporting" @click="doExport">导出</el-button>
       <el-button v-perm="'safety:hazard:report'" type="danger" icon="Warning" @click="openReport">上报隐患</el-button>
     </div>
 
@@ -81,6 +82,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { pageHazards, reportHazard, spaceOptions } from '@/api'
 import { HAZARD_CATEGORIES, HAZARD_LEVELS, HAZARD_STATUS } from '@/utils/dict'
+import { downloadFile } from '@/utils/download'
 import HazardDetail from './HazardDetail.vue'
 
 const route = useRoute()
@@ -104,6 +106,18 @@ async function load() {
 function search() {
   query.current = 1
   load()
+}
+
+// 导出：带上当前的筛选条件
+const exporting = ref(false)
+async function doExport() {
+  exporting.value = true
+  try {
+    const params = Object.fromEntries(Object.entries(query).filter(([k, v]) => v !== '' && v != null && v !== false && !['current', 'size'].includes(k)))
+    await downloadFile('/safety/hazard/export', params, '隐患台账.xlsx')
+  } finally {
+    exporting.value = false
+  }
 }
 
 const reportVisible = ref(false)

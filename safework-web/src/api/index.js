@@ -114,3 +114,21 @@ export const withdrawNotice = (id) => request.delete(`/system/notice/${id}`)
 export const listJobs = () => request.get('/platform/job/list')
 export const pageJobLogs = (params) => request.get('/platform/job/log/page', { params })
 export const runJob = (code) => request.post(`/platform/job/${code}/run`, null, { timeout: 120000 })
+
+// ---------- 附件、导入导出、看板 ----------
+export const listFiles = (params) => request.get('/file/list', { params })
+export const uploadFile = (bizType, bizId, tag, file) => {
+  const form = new FormData()
+  form.append('bizType', bizType)
+  form.append('bizId', bizId)
+  form.append('tag', tag)
+  form.append('file', file)
+  return request.post('/file/upload', form, { timeout: 120000 })
+}
+export const removeFile = (id) => request.delete(`/file/${id}`)
+export const importSpaces = (file) => {
+  const form = new FormData()
+  form.append('file', file)
+  return request.post('/safety/space/import', form, { timeout: 120000 })
+}
+export const dashboardOverview = (days) => request.get('/dashboard/overview', { params: { days } })

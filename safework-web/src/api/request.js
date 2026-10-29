@@ -19,7 +19,12 @@ request.interceptors.request.use((config) => {
 })
 
 request.interceptors.response.use(
-  (resp) => {
+  async (resp) => {
+    // 文件下载（导出 Excel、下载附件）：成功时直接返回响应；失败时后端返回的是 JSON，转成普通错误
+    if (resp.config.responseType === 'blob') {
+      if (!(resp.headers['content-type'] || '').includes('application/json')) return resp
+      resp.data = JSON.parse(await resp.data.text())
+    }
     const { code, msg, data } = resp.data
     if (code === 200) return data
     if (code === 401) {

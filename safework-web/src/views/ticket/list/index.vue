@@ -10,6 +10,7 @@
       </el-select>
       <el-button icon="Search" @click="search">查询</el-button>
       <div class="spacer" />
+      <el-button v-perm="'ticket:export'" icon="Download" :loading="exporting" @click="doExport">导出</el-button>
       <el-button v-perm="'ticket:add'" type="primary" icon="Plus" @click="openCreate">新建作业票</el-button>
     </div>
 
@@ -50,6 +51,7 @@
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { downloadFile } from '@/utils/download'
 import { pageTickets } from '@/api'
 import { TICKET_STATUS, TICKET_TYPES } from '@/utils/dict'
 import TicketForm from './TicketForm.vue'
@@ -78,6 +80,17 @@ async function load() {
 function search() {
   query.current = 1
   load()
+}
+
+const exporting = ref(false)
+async function doExport() {
+  exporting.value = true
+  try {
+    const params = Object.fromEntries(Object.entries(query).filter(([k, v]) => v !== '' && v != null && !['current', 'size'].includes(k)))
+    await downloadFile('/ticket/export', params, '作业票台账.xlsx')
+  } finally {
+    exporting.value = false
+  }
 }
 const openCreate = () => formRef.value.open()
 const openEdit = (ticket) => formRef.value.open(ticket)

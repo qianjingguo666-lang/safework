@@ -10,7 +10,9 @@ import com.safework.ticket.dto.TicketDetailVO;
 import com.safework.ticket.dto.TicketQueryDTO;
 import com.safework.ticket.dto.TicketSaveDTO;
 import com.safework.ticket.entity.WorkTicket;
+import com.safework.ticket.excel.TicketExcelService;
 import com.safework.ticket.service.TicketService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +35,14 @@ import java.util.List;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final TicketExcelService excelService;
+
+    /** 导出作业票台账（筛选条件、数据权限和列表一致） */
+    @SaCheckPermission("ticket:export")
+    @GetMapping("/export")
+    public void export(TicketQueryDTO query, HttpServletResponse response) {
+        excelService.export(query, response);
+    }
 
     @SaCheckPermission("ticket:list")
     @GetMapping("/page")

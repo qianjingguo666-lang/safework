@@ -9,7 +9,9 @@ import com.safework.safety.dto.HazardDetailVO;
 import com.safework.safety.dto.HazardQueryDTO;
 import com.safework.safety.dto.HazardReportDTO;
 import com.safework.safety.entity.Hazard;
+import com.safework.safety.excel.SafetyExcelService;
 import com.safework.safety.service.HazardService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +31,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class HazardController {
 
     private final HazardService hazardService;
+    private final SafetyExcelService excelService;
+
+    /** 导出隐患台账（筛选条件和列表一致） */
+    @SaCheckPermission("safety:hazard:export")
+    @GetMapping("/export")
+    public void export(HazardQueryDTO query, HttpServletResponse response) {
+        excelService.exportHazards(query, response);
+    }
 
     @SaCheckPermission("safety:hazard:list")
     @GetMapping("/page")

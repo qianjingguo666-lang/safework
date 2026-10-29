@@ -25,6 +25,12 @@
         <el-descriptions-item label="验收时间">{{ h.verifyTime || '-' }}</el-descriptions-item>
       </el-descriptions>
 
+      <!-- key 带上状态：流转后重新加载，上传按钮跟着当前环节变化 -->
+      <AttachmentPanel :key="`r-${h.id}-${h.status}`" biz-type="HAZARD" :biz-id="h.id" tag="REPORT" title="现场照片" image-only
+                       empty-text="上报人和安全员可以在指派前上传现场照片" />
+      <AttachmentPanel v-if="h.rectifierId" :key="`f-${h.id}-${h.status}`" biz-type="HAZARD" :biz-id="h.id" tag="RECTIFY"
+                       title="整改后照片" image-only empty-text="整改人在整改中阶段上传，验收时对照查看" />
+
       <h4>处理记录</h4>
       <el-timeline>
         <el-timeline-item v-for="l in logs" :key="l.id" :timestamp="l.createTime" placement="top">
@@ -59,6 +65,7 @@
 import { reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getHazard, hazardAction, userOptions } from '@/api'
+import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import { HAZARD_ACTIONS, HAZARD_LEVELS, HAZARD_STATUS, nowStr } from '@/utils/dict'
 
 const emit = defineEmits(['changed'])
