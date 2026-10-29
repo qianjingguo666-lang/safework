@@ -4,6 +4,14 @@ server:
 spring:
   application:
     name: safework
+  # 默认使用开发环境配置（application-dev.yml）；服务器上 docker-compose.prod.yml 会设置 SPRING_PROFILES_ACTIVE=prod
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  # GET 请求里的时间参数（如日志查询的开始、结束时间）按这个格式解析
+  mvc:
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+      date: yyyy-MM-dd
   # API Key 等密钥放在项目根目录的 config/secret.yml（已加入 .gitignore，不会提交到 GitHub）
   config:
     import: optional:file:./config/secret.yml
@@ -57,11 +65,23 @@ management:
 
 logging:
   level:
-    com.safework: debug
+    com.safework: info
+
+# ============ 登录安全 ============
+safework:
+  security:
+    # 图形验证码
+    captcha-enabled: true
+    # 开发环境返回验证码答案给测试脚本：这里是 false，只在 application-dev.yml 里打开
+    captcha-debug: false
+    captcha-expire-seconds: 120
+    # 15 分钟内连续输错 5 次密码，锁定 15 分钟
+    max-fail-count: 5
+    fail-window-minutes: 15
+    lock-minutes: 15
 
 # ============ AI 助手 ============
 # 不配置 api-key 也能运行：没有对话模型时只返回检索到的原文；没有向量模型时只用关键词检索
-safework:
   ai:
     # 每人每分钟最多提问次数（控制大模型调用成本）
     rate-limit-per-minute: 10

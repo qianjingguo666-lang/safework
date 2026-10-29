@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.safework.common.annotation.OperLog;
 import com.safework.common.exception.BizException;
 import com.safework.common.tenant.TenantContext;
+import com.safework.common.util.IpUtils;
 import com.safework.system.entity.SysOperLog;
 import com.safework.system.service.AuthService;
 import com.safework.system.service.OperLogService;
@@ -18,7 +19,6 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -37,8 +37,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class OperLogAspect {
 
-    /** 参数里的密码字段统一替换成 ****** */
-    private static final Pattern PASSWORD = Pattern.compile("\"(password|oldPassword|newPassword)\"\\s*:\\s*\"[^\"]*\"");
+    /** 参数里的密码字段（password、newPassword、adminPassword……）统一替换成 ****** */
+    private static final Pattern PASSWORD = Pattern.compile("\"([A-Za-z]*[pP]assword)\"\\s*:\\s*\"[^\"]*\"");
     private static final int MAX_PARAMS = 2000;
     private static final int MAX_ERROR = 1000;
 
@@ -87,7 +87,7 @@ public class OperLogAspect {
         if (req != null) {
             entry.setRequestMethod(req.getMethod());
             entry.setRequestUri(req.getRequestURI());
-            entry.setIp(clientIp(req));
+            entry.setIp(IpUtils.clientIp(req));
         }
         entry.setStatus(error == null ? 1 : 0);
         if (error != null) {
@@ -117,16 +117,6 @@ public class OperLogAspect {
             return attrs.getRequest();
         }
         return null;
-    }
-
-    /** 部署在 Nginx 后面时，真实 IP 在 X-Forwarded-For / X-Real-IP 里 */
-    private static String clientIp(HttpServletRequest req) {
-        String ip = req.getHeader("X-Forwarded-For");
-        if (StringUtils.hasText(ip)) {
-            return ip.split(",")[0].trim();
-        }
-        ip = req.getHeader("X-Real-IP");
-        return StringUtils.hasText(ip) ? ip : req.getRemoteAddr();
     }
 
     private static String truncate(String s, int max) {

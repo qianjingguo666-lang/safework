@@ -5,14 +5,9 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-import com.safework.common.tenant.TenantContext;
-import com.safework.system.service.AuthService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -25,43 +20,23 @@ public class WebConfig implements WebMvcConfigurer {
     /** 不需要登录的接口 */
     private static final List<String> WHITE_LIST = List.of(
             "/auth/login",
+            "/auth/captcha",
             // 扫码查看受限空间：现场人员不需要登录
             "/public/**",
             "/actuator/health",
             "/error"
     );
 
+    private final TenantInterceptor tenantInterceptor;
+
+    public WebConfig(TenantInterceptor tenantInterceptor) {
+        this.tenantInterceptor = tenantInterceptor;
+    }
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 1. 先设置租户：已登录请求从会话中取出租户 ID 放入 TenantContext，请求结束后清理。
-        //    必须排在登录拦截器前面，因为 @SaCheckPermission 校验时会查数据库，需要租户信息
-        registry.addInterceptor(new AsyncHandlerInterceptor() {
-            @Override
-            public boolean preHandle(HttpServletRequest req, HttpServletResponse resp, Object handler) {
-                if (StpUtil.isLogin()) {
-                    Object tenantId = StpUtil.getSession().get(AuthService.SESSION_TENANT_ID);
-                    if (tenantId != null) {
-                        TenantContext.set(Long.valueOf(tenantId.toString()));
-                    }
-                }
-                return true;
-            }
-
-            @Override
-            public void afterCompletion(HttpServletRequest req, HttpServletResponse resp, Object handler, Exception ex) {
-                // 线程池会复用线程，不清理会把上一个人的租户带到下一个请求
-                TenantContext.clear();
-            }
-
-            /**
-             * 异步请求（AI 流式回答 SSE）：控制器返回后请求线程就被释放了，不会调用 afterCompletion，
-             * 必须在这里清理，否则这个 Tomcat 线程会带着上一个企业的租户 ID 去处理别人的请求
-             */
-            @Override
-            public void afterConcurrentHandlingStarted(HttpServletRequest req, HttpServletResponse resp, Object handler) {
-                TenantContext.clear();
-            }
-        }).addPathPatterns("/**");
+        // 1. 先设置租户（并检查企业状态）。必须排在登录拦截器前面，因为 @SaCheckPermission 校验时会查数据库，需要租户信息
+        registry.addInterceptor(tenantInterceptor).addPathPatterns("/**");
 
         // 2. 登录校验 + 权限注解校验（@SaCheckPermission）
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))

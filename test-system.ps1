@@ -18,8 +18,14 @@ function Call($method, $path, $body, $token) {
     $text = [Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray())
     return $text | ConvertFrom-Json
 }
-function Login($tenant, $user) {
-    $r = Call POST '/auth/login' @{ tenantCode = $tenant; username = $user; password = 'admin123' }
+# 登录要先取验证码：开发环境（dev）后端会把答案放在 debugAnswer 里返回，脚本直接用它
+function LoginRaw($tenant, $user, $password) {
+    $c = (Call GET '/auth/captcha').data
+    if ($c.enabled -and -not $c.debugAnswer) { throw '后端没有返回验证码答案：请确认后端是用开发环境（dev）启动的' }
+    return Call POST '/auth/login' @{ tenantCode = $tenant; username = $user; password = $password; captchaKey = $c.captchaKey; captchaCode = $c.debugAnswer }
+}
+function Login($tenant, $user, $password = 'admin123') {
+    $r = LoginRaw $tenant $user $password
     if ($r.code -ne 200) { throw "登录失败 $tenant/$user：$($r.msg)" }
     return $r.data.token
 }
@@ -76,7 +82,7 @@ $r = Call PUT "/system/user/$uid/status" @{ status = 0 } $tAdmin
 Check '停用用户' ($r.code -eq 200)
 $r = Call GET '/auth/me' $null $tUser; Show $r
 Check '被停用的用户原来的登录立即失效（401）' ($r.code -eq 401)
-$r = Call POST '/auth/login' @{ tenantCode = 'demo'; username = $name; password = 'admin123' }; Show $r
+$r = LoginRaw 'demo' $name 'admin123'; Show $r
 Check '被停用的用户无法登录' ($r.code -eq 400)
 Call PUT "/system/user/$uid/status" @{ status = 1 } $tAdmin | Out-Null
 $r = Call PUT '/system/user/101/status' @{ status = 0 } $tAdmin; Show $r
@@ -88,12 +94,12 @@ $r = Call PUT "/system/user/$uid/password" @{ password = 'reset123' } $tAdmin
 Check '管理员重置密码' ($r.code -eq 200)
 $r = Call GET '/auth/me' $null $tUser
 Check '重置后原来的登录失效' ($r.code -eq 401)
-$tUser = (Call POST '/auth/login' @{ tenantCode = 'demo'; username = $name; password = 'reset123' }).data.token
+$tUser = (LoginRaw 'demo' $name 'reset123').data.token
 Check '用新密码登录' ([bool]$tUser)
 $r = Call POST '/auth/password' @{ oldPassword = 'wrong'; newPassword = 'mine123' } $tUser; Show $r
 Check '原密码错误不能修改' ($r.code -eq 400)
 $r = Call POST '/auth/password' @{ oldPassword = 'reset123'; newPassword = 'mine123' } $tUser
-$ok = (Call POST '/auth/login' @{ tenantCode = 'demo'; username = $name; password = 'mine123' }).code -eq 200
+$ok = (LoginRaw 'demo' $name 'mine123').code -eq 200
 Check '修改自己的密码后用新密码登录' ($r.code -eq 200 -and $ok)
 
 Title '6. 下拉选项、权限'

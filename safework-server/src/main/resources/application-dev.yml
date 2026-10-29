@@ -1,0 +1,9 @@
+# 开发环境（本机运行时默认生效）
+safework:
+  security:
+    # 获取验证码时把答案一起返回，测试脚本（test-*.ps1）靠它自动登录。生产环境绝对不能打开
+    captcha-debug: true
+
+logging:
+  level:
+    com.safework: debug

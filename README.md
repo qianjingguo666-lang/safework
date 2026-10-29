@@ -1,6 +1,6 @@
 # SafeWork 智能安全作业管理平台
 
-面向工贸、化工企业的多租户 SaaS：受限空间、动火、高处等特殊作业的作业票申请、审批与台账管理，并内置 AI 安全规程问答与作业票智能预审。
+面向工贸、化工企业的多租户 SaaS：受限空间、动火、高处等特殊作业的作业票申请、审批与台账管理，并内置 AI 安全规程问答与作业票智能预审。平台端负责企业入驻、套餐、续费和停用。
 
 ## 当前进度
 
@@ -12,9 +12,12 @@
 | 2 | 前端（Vue3 + Element Plus，动态路由、按钮权限） | ✅ 完成 |
 | 2 | 受限空间台账 + 现场二维码、隐患排查闭环 | ✅ 完成 |
 | 2 | 部门、用户管理完善、操作日志（AOP） | ✅ 完成 |
+| 2 | SaaS 平台端：企业开通、套餐、到期续费、停用 | ✅ 完成 |
+| 2 | 登录安全：图形验证码、失败锁定、登录日志、在线用户强制下线 | ✅ 完成 |
 | 2 | 文件上传（现场照片、附件）、数据看板 | 下一步 |
 | 3 | AI 知识库问答（RAG，流式输出、引用出处）、作业票 AI 预审 | ✅ 完成 |
-| 4 | 服务器部署、HTTPS、CI/CD | 待开始 |
+| 4 | Docker 部署（多阶段构建、Nginx 反向代理、一键发布、数据库备份） | ✅ 完成 |
+| 4 | 域名 + HTTPS、CI/CD | 下一步 |
 
 ## 技术栈
 
@@ -24,28 +27,34 @@
 
 **AI**：讯飞星火（OpenAI 兼容接口）· 阿里云百炼向量模型 · PDFBox · SSE 流式输出
 
-**部署**：Docker Compose
+**部署**：Docker 多阶段构建 · Docker Compose · Nginx（静态资源 + 反向代理 + SSE）
 
 ## 项目结构
 
 ```
 safework
 ├── safework-common   公共模块：统一返回 R、业务异常、全局异常处理、租户上下文、实体基类
-├── safework-system   系统模块：租户、部门、用户、登录、角色、菜单权限、操作日志切面
+├── safework-system   系统模块：平台端（企业、套餐）、部门、用户、登录安全、角色、菜单权限、日志
 ├── safework-safety   安全管理模块：受限空间台账、隐患排查治理
 ├── safework-ticket   作业票模块：作业票、审批流状态机、操作记录
 ├── safework-ai       AI 模块：知识库（解析、切分、向量）、混合检索、流式问答、作业票预审
 ├── safework-server   启动模块：配置（租户插件、登录拦截）并打包成可运行 jar
 ├── safework-web      前端：Vue3 + Element Plus
-├── sql/init.sql      建表脚本和演示数据
+├── sql/init.sql      建表脚本和演示数据（新建数据库用）
+├── sql/upgrade/      已有数据库的升级脚本（按版本号执行一次）
 ├── config/secret.example.yml  AI 密钥配置模板（复制为 secret.yml，不会提交）
 ├── docs/knowledge/   示例制度文件《特殊作业安全管理制度（示例）》，可上传到知识库测试
-├── docker-compose.yml  本地启动 MySQL + Redis
+├── docker-compose.yml       本地开发：只启动 MySQL + Redis
+├── docker-compose.prod.yml  生产部署：MySQL + Redis + 后端 + 前端（Nginx）
+├── Dockerfile               后端镜像（多阶段构建）
+├── deploy/                  服务器初始化、发布、备份脚本
+├── docs/deploy.md           部署说明
 ├── test-api.ps1      登录、租户、权限自测脚本
 ├── test-ticket.ps1   作业票审批流自测脚本
 ├── test-safety.ps1   受限空间、扫码、隐患闭环自测脚本
 ├── test-system.ps1   部门、用户管理、操作日志自测脚本
-└── test-ai.ps1       AI 知识库问答、预审、限流自测脚本
+├── test-ai.ps1       AI 知识库问答、预审、限流自测脚本
+└── test-platform.ps1 平台端（开通企业、套餐）+ 登录安全自测脚本
 ```
 
 采用**模块化单体**：业务按 Maven 模块划分、边界清晰，但只部署一个进程，适合 2 核 4G 的个人服务器。后续需要时可以把 AI 模块单独拆成服务。
@@ -57,7 +66,9 @@ safework
 3. 每个请求由拦截器从会话中取出租户 ID，放入 `TenantContext`（ThreadLocal），请求结束后清理，防止线程复用导致串租户。
 4. MyBatis-Plus `TenantLineInnerInterceptor` 自动给 SQL 拼接 `tenant_id = ?`，业务代码不需要手写租户条件；新增数据时自动写入 `tenant_id`。
 5. **失败即拒绝**：拿不到租户 ID 时直接抛异常，而不是放行成查询全部租户的数据。
-6. `sys_tenant` 等平台级表通过 `ignoreTable` 排除在隔离之外。
+6. `sys_tenant`、`sys_tenant_package`、`sys_menu` 等平台级表通过 `ignoreTable` 排除在隔离之外。
+7. **停用 / 到期立即生效**：租户拦截器每个请求都检查企业状态（30 秒本地缓存，平台修改时主动清除），已登录的用户下一次请求就被拒绝，不用等 token 过期。
+8. **平台操作别的企业**：开通企业时用 `TenantContext.runAs(新企业ID, ...)` 临时切换租户写入初始数据，而不是关掉租户插件 —— 即使代码写错，影响范围也只有被切换到的那个企业。
 
 ## RBAC 权限设计
 
@@ -65,14 +76,16 @@ safework
 - **菜单是平台级**（所有企业共用一套功能菜单），**角色和关联表按企业隔离**（每个企业自己定义角色、分配权限）
 - 菜单分三种：`M` 目录、`C` 页面、`F` 按钮；按钮上的 `perms` 就是接口权限码
 - 接口用 `@SaCheckPermission("system:user:add")` 声明所需权限，Sa-Token 通过 `StpInterfaceImpl` 查询当前用户权限
-- 企业管理员（`role_code = admin`）直接返回 `*` 通配符，不需要逐个分配
+- **最终权限 = 角色分配的菜单 ∩ 企业套餐包含的菜单**。企业管理员（`role_code = admin`）拥有套餐内全部菜单，不需要逐个分配；没有用 `*` 通配符，否则套餐限制不住管理员
+- 套餐降级（旗舰版 → 标准版）后，角色里多出来的菜单自动失效，不需要逐个修改角色；给角色分配套餐外的菜单会被拒绝
+- 菜单有作用范围 `scope`：`T` 企业端（可以放进套餐）、`P` 平台端（企业管理、套餐管理，只有运营平台能看到）
 - `/auth/me` 一次返回用户信息、角色、权限码、菜单树，前端据此生成动态路由和控制按钮显示
 - **越权防护**：分配角色时，用户和角色都通过租户插件查询，别的企业的 ID 查不到，直接返回“不存在”
 - **拦截器顺序**：租户拦截器必须排在 Sa-Token 拦截器前面，因为权限注解校验时要查库，需要先有租户上下文
 
 | 角色 | 编码 | 权限 |
 |---|---|---|
-| 企业管理员 | admin | 全部 |
+| 企业管理员 | admin | 套餐内全部 |
 | 安全员 | safety | 查看、审批作业票 |
 | 作业负责人 | leader | 查看、申请作业票 |
 | 监护人 | guardian | 查看作业票 |
@@ -126,6 +139,26 @@ safework
 - **用户**：修改、停用（**立即踢下线**，`StpUtil.logout(userId)`）、重置密码（强制重新登录）、修改自己的密码；列表批量填充部门和角色名称，避免 N+1 查询
 - **操作日志**：自定义注解 `@OperLog(module, action)` + AOP 切面自动记录操作人、IP、参数、结果、耗时；密码字段自动脱敏；失败的操作也会记录原因；记录日志出错不影响业务
 
+## SaaS 平台端
+
+运营平台本身也是一个租户（`tenant_id = 0`，企业编码 `platform`），平台管理员和企业用户用同一套登录、权限代码，只是菜单不同。
+
+- **开通企业**：一个事务里完成：新建企业 → 切换到新企业创建根部门、企业管理员、安全员 / 作业负责人 / 监护人预置角色（按套餐分配菜单）→ 创建管理员账号。任何一步失败全部回滚
+- **套餐**：旗舰版（全部功能）、标准版（不含 AI）、基础版（只有作业票），平台可以自定义；修改套餐后使用它的企业立即按新范围生效；平台菜单不能放进套餐；有企业在用的套餐不能停用 / 删除
+- **服务期限、账号上限**：到期前 30 天在企业页面顶部提醒续费；到期后已登录用户立即失效、不能再登录；新增用户超过上限时拒绝
+- **停用企业**：该企业所有在线用户立即被踢下线
+- **平台首页**：企业数、即将到期企业、账号数、在线人数、今日登录成功 / 失败次数
+- **双重防线**：`/platform/**` 接口既要求平台权限码，租户拦截器还会检查当前租户必须是平台，企业管理员绕不过去
+
+## 登录安全
+
+- **图形验证码**：算术题（如 `7+5=?`），答案存在 Redis，2 分钟过期，**校验一次就作废**（不管对错），防止拿同一个验证码反复试密码。图片用 SVG 折线笔画绘制：不依赖服务器字体（Docker 精简镜像里 `java.awt` 画字经常出问题），也没有把文字明文写进 `<text>` 标签
+- **校验顺序**：验证码 → 企业 → 账号锁定 → 密码 → 账号状态。没有正确验证码的请求连“企业是否存在、账号是否锁定”都探测不到
+- **失败锁定**：同一企业同一用户名 15 分钟内连续输错 5 次，锁定 15 分钟（可配置）。用户名不存在也计数（防止通过“锁没锁”枚举账号）；用户名转小写计数（MySQL 不区分大小写，防止 `Admin` / `admin` 分开计数被绕过）；企业管理员可以在用户列表一键解锁
+- **登录日志**：成功、失败都记录 IP、浏览器、操作系统、失败原因；企业看自己的，平台能看全部（排查“我登不上去”、发现撞库）
+- **在线用户**：每个企业一个 Redis Hash 记录会话；接口只返回 token 的 SHA-256 摘要作为会话 ID，**不返回 token 本身**；强制下线后对方下一次请求收到“您已被管理员强制下线”；不能踢自己当前的会话；退出、停用、过期的会话在查询时懒删除
+- **开发 / 生产配置分离**：开发环境（`application-dev.yml`）获取验证码时会把答案一起返回，测试脚本靠它自动登录；生产环境（`SPRING_PROFILES_ACTIVE=prod`）不返回
+
 ## AI 助手
 
 ### 知识库问答（RAG）
@@ -175,6 +208,7 @@ notepad config\secret.yml
 
 | 企业编码 | 用户名 | 密码 | 说明 |
 |---|---|---|---|
+| platform | admin | admin123 | 运营平台 · 平台管理员（开通企业、管理套餐） |
 | demo | admin | admin123 | 演示化工 · 企业管理员 |
 | demo | zhangsan | admin123 | 演示化工 · 安全员 |
 | demo | lisi | admin123 | 演示化工 · 作业负责人 |
@@ -188,7 +222,8 @@ notepad config\secret.yml
 
 | 方法 | 路径 | 说明 | 所需权限 |
 |---|---|---|---|
-| POST | /auth/login | 登录，返回 token | 否 |
+| GET | /auth/captcha | 获取图形验证码 | 否 |
+| POST | /auth/login | 登录（企业编码、用户名、密码、验证码），返回 token | 否 |
 | GET | /auth/me | 当前用户 + 角色 + 权限码 + 菜单树 | 是 |
 | POST | /auth/logout | 退出登录 | 是 |
 | GET | /system/user/page | 用户分页（current, size, keyword） | system:user:list |
@@ -210,6 +245,13 @@ notepad config\secret.yml
 | GET | /system/user/options | 人员下拉 | 登录即可 |
 | POST | /auth/password | 修改自己的密码 | 登录即可 |
 | GET | /system/log/page | 操作日志 | system:log:list |
+| PUT | /system/user/{id}/unlock | 解除密码错误锁定 | system:user:unlock |
+| GET | /system/loginlog/page | 本企业登录日志 | system:loginlog:list |
+| GET / DELETE | /system/online/list、/system/online/{sessionId} | 在线用户 / 强制下线 | system:online:list、kickout |
+| GET | /platform/tenant/page、/{id}、/stats | 企业列表 / 详情 / 平台统计 | platform:tenant:list |
+| POST / PUT | /platform/tenant、/{id}、/{id}/status、/{id}/admin-password | 开通 / 修改续费 / 启停 / 重置管理员密码 | platform:tenant:add、edit |
+| GET / POST / PUT / DELETE | /platform/package/list、/menu-tree、/platform/package | 套餐管理 | platform:package:* |
+| GET | /platform/loginlog/page | 全部企业的登录日志 | platform:loginlog:list |
 | GET / POST / PUT | /safety/space/page、/safety/space | 受限空间台账 | safety:space:* |
 | GET | /safety/space/{id}/qr-token | 获取二维码令牌 | safety:space:edit |
 | GET | /public/space/{token} | 扫码查看（匿名） | 否 |
@@ -225,6 +267,20 @@ notepad config\secret.yml
 | GET | /actuator/health | 健康检查 | 否 |
 
 请求头：`Authorization: Bearer <token>`；时间格式：`yyyy-MM-dd HH:mm:ss`
+
+## 部署
+
+详见 [docs/deploy.md](docs/deploy.md)。
+
+```bash
+cp .env.example .env    # 修改密码、填写 AI Key
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+- 前端、后端都在容器里编译，服务器只需要安装 Docker
+- 只有 Nginx 对外开放 80 端口；MySQL、Redis 不映射端口
+- 密码、Key 通过 `.env` 注入环境变量，`.dockerignore` 保证密钥不会打进镜像
+- 针对 2G 内存服务器调优：JVM 堆 512M、MySQL 缓冲池 256M、Redis 128M
 
 ## 本地运行
 
@@ -247,4 +303,12 @@ powershell -ExecutionPolicy Bypass -File .\test-ticket.ps1
 powershell -ExecutionPolicy Bypass -File .\test-safety.ps1
 powershell -ExecutionPolicy Bypass -File .\test-system.ps1
 powershell -ExecutionPolicy Bypass -File .\test-ai.ps1
+powershell -ExecutionPolicy Bypass -File .\test-platform.ps1
+```
+
+已有数据库升级（保留原有数据）：
+
+```powershell
+docker cp sql\upgrade\v2-platform-security.sql safework-mysql:/tmp/v2.sql
+docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v2.sql"
 ```

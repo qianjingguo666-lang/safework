@@ -19,8 +19,14 @@ function Call($method, $path, $body, $token) {
     return $text | ConvertFrom-Json
 }
 
-function Login($tenant, $user) {
-    $r = Call POST '/auth/login' @{ tenantCode = $tenant; username = $user; password = 'admin123' }
+# 登录要先取验证码：开发环境（dev）后端会把答案放在 debugAnswer 里返回，脚本直接用它
+function LoginRaw($tenant, $user, $password) {
+    $c = (Call GET '/auth/captcha').data
+    if ($c.enabled -and -not $c.debugAnswer) { throw '后端没有返回验证码答案：请确认后端是用开发环境（dev）启动的' }
+    return Call POST '/auth/login' @{ tenantCode = $tenant; username = $user; password = $password; captchaKey = $c.captchaKey; captchaCode = $c.debugAnswer }
+}
+function Login($tenant, $user, $password = 'admin123') {
+    $r = LoginRaw $tenant $user $password
     if ($r.code -ne 200) { throw "登录失败 $tenant/$user：$($r.msg)" }
     return $r.data.token
 }
@@ -41,8 +47,8 @@ $tDemo = Login 'demo' 'admin'
 $r = Call GET '/auth/me' $null $tDemo
 Write-Host "角色 = $($r.data.roles -join ', ')   权限 = $($r.data.permissions -join ', ')"
 Write-Host "菜单 = $((@($r.data.menus) | ForEach-Object { $_.menuName }) -join ', ')"
-Check '企业管理员拥有全部权限 *' ($r.data.permissions -contains '*')
-Check '能看到 3 个顶级菜单（作业、安全、系统）' (@($r.data.menus).Count -eq 3)
+Check '企业管理员拥有套餐内全部权限（旗舰版含 AI）' ($r.data.permissions -contains 'system:user:add' -and $r.data.permissions -contains 'ai:chat')
+Check '能看到 4 个顶级菜单（作业、安全、AI、系统）' (@($r.data.menus).Count -eq 4)
 Check '不返回密码' (-not $r.data.user.password)
 
 Title '3. 演示化工 zhangsan（安全员）登录'
@@ -98,7 +104,7 @@ Check '被拒绝' ($r.code -eq 400)
 Title '10. 未登录 / 错误密码'
 $r = Call GET '/system/user/page'
 Check "未登录返回 401（$($r.msg)）" ($r.code -eq 401)
-$r = Call POST '/auth/login' @{ tenantCode = 'demo'; username = 'admin'; password = 'wrong' }
+$r = LoginRaw 'demo' 'admin' 'wrong'
 Check "错误密码被拒绝（$($r.msg)）" ($r.code -eq 400)
 
 Write-Host ''

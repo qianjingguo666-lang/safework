@@ -26,7 +26,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotLoginException.class)
     public R<Void> handleNotLogin(NotLoginException e) {
-        return R.fail(401, "未登录或登录已过期");
+        // 根据 Sa-Token 给出的原因返回不同提示，前端直接弹出，用户知道自己为什么被退出
+        String msg = switch (String.valueOf(e.getType())) {
+            case NotLoginException.KICK_OUT -> "您已被管理员强制下线";
+            case NotLoginException.BE_REPLACED -> "您的账号已在其他地方登录";
+            case NotLoginException.TOKEN_TIMEOUT -> "登录已过期，请重新登录";
+            default -> "未登录或登录已过期";
+        };
+        return R.fail(401, msg);
     }
 
     @ExceptionHandler({NotPermissionException.class, NotRoleException.class})

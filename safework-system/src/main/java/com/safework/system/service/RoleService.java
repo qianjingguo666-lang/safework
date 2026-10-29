@@ -23,6 +23,7 @@ public class RoleService {
     private final SysRoleMapper roleMapper;
     private final SysMenuMapper menuMapper;
     private final SysRoleMenuMapper roleMenuMapper;
+    private final PermissionService permissionService;
 
     public List<SysRole> list() {
         return roleMapper.selectList(Wrappers.<SysRole>lambdaQuery().orderByAsc(SysRole::getSort));
@@ -65,11 +66,15 @@ public class RoleService {
     public void assignMenus(Long roleId, List<Long> menuIds) {
         SysRole role = getById(roleId);
         if (SysRole.ADMIN_CODE.equals(role.getRoleCode())) {
-            throw new BizException("企业管理员默认拥有全部权限，无需分配");
+            throw new BizException("企业管理员默认拥有套餐内全部权限，无需分配");
         }
         Set<Long> ids = new HashSet<>(menuIds);
         if (!ids.isEmpty() && menuMapper.selectBatchIds(ids).size() != ids.size()) {
             throw new BizException("包含不存在的菜单");
+        }
+        // 只能分配套餐内的菜单：防止绕过前端，直接调接口把平台菜单或更高级套餐的功能分配给角色
+        if (!permissionService.availableMenuIds().containsAll(ids)) {
+            throw new BizException("包含当前套餐未开通的功能");
         }
         roleMenuMapper.delete(Wrappers.<SysRoleMenu>lambdaQuery().eq(SysRoleMenu::getRoleId, roleId));
         for (Long menuId : ids) {

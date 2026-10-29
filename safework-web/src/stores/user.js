@@ -10,10 +10,13 @@ export const useUserStore = defineStore('user', {
     roles: [],
     permissions: [],
     menus: [],
+    /** 企业信息：名称、套餐、到期时间、是否运营平台 */
+    tenant: null,
     loaded: false
   }),
   getters: {
-    nickname: (s) => s.user?.nickname || s.user?.username || ''
+    nickname: (s) => s.user?.nickname || s.user?.username || '',
+    isPlatform: (s) => !!s.tenant?.platform
   },
   actions: {
     async login(form) {
@@ -30,12 +33,17 @@ export const useUserStore = defineStore('user', {
       this.roles = data.roles
       this.permissions = data.permissions
       this.menus = data.menus
+      this.tenant = data.tenant
+      if (data.tenant?.tenantName) {
+        this.tenantName = data.tenant.tenantName
+        setTenantName(data.tenant.tenantName)
+      }
       this.loaded = true
       return data
     },
     hasPerm(perm) {
       if (!perm) return true
-      return this.permissions.includes('*') || this.permissions.includes(perm)
+      return this.permissions.includes(perm)
     },
     async logout() {
       try { await apiLogout() } catch { /* token 已失效也要继续退出 */ }

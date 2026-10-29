@@ -79,6 +79,14 @@ public class UserController {
         return R.ok();
     }
 
+    @OperLog(module = "用户管理", action = "解锁账号")
+    @SaCheckPermission("system:user:unlock")
+    @PutMapping("/{id}/unlock")
+    public R<Void> unlock(@PathVariable Long id) {
+        userService.unlock(id);
+        return R.ok();
+    }
+
     @SaCheckPermission("system:user:role")
     @GetMapping("/{id}/roles")
     public R<List<Long>> roleIds(@PathVariable Long id) {

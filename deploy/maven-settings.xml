@@ -1,0 +1,10 @@
+<settings>
+  <!-- 构建镜像时使用阿里云镜像，国内服务器下载依赖更快 -->
+  <mirrors>
+    <mirror>
+      <id>aliyun</id>
+      <mirrorOf>central</mirrorOf>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+  </mirrors>
+</settings>

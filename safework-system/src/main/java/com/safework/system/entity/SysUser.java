@@ -26,9 +26,12 @@ public class SysUser extends BaseEntity {
     /** 1 正常 0 停用 */
     private Integer status;
 
-    /** 以下两个字段不在 sys_user 表里，查询列表时填充，方便前端显示 */
+    /** 以下字段不在 sys_user 表里，查询列表时填充，方便前端显示 */
     @TableField(exist = false)
     private String deptName;
     @TableField(exist = false)
     private List<String> roleNames;
+    /** 是否因为密码错误次数过多被锁定（状态在 Redis 里） */
+    @TableField(exist = false)
+    private Boolean locked;
 }

@@ -8,8 +8,12 @@ import com.safework.system.dto.LoginDTO;
 import com.safework.system.dto.LoginVO;
 import com.safework.system.dto.UserInfoVO;
 import com.safework.system.service.AuthService;
+import com.safework.system.security.CaptchaService;
+import com.safework.system.security.CaptchaVO;
 import com.safework.system.service.PermissionService;
+import com.safework.system.service.TenantService;
 import com.safework.system.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,13 +30,21 @@ public class AuthController {
     private final AuthService authService;
     private final UserService userService;
     private final PermissionService permissionService;
+    private final TenantService tenantService;
+    private final CaptchaService captchaService;
 
-    @PostMapping("/login")
-    public R<LoginVO> login(@Valid @RequestBody LoginDTO dto) {
-        return R.ok(authService.login(dto));
+    /** 获取图形验证码（不需要登录） */
+    @GetMapping("/captcha")
+    public R<CaptchaVO> captcha() {
+        return R.ok(captchaService.create());
     }
 
-    /** 当前用户信息 + 角色 + 权限码 + 菜单树，前端登录后调用一次 */
+    @PostMapping("/login")
+    public R<LoginVO> login(@Valid @RequestBody LoginDTO dto, HttpServletRequest request) {
+        return R.ok(authService.login(dto, request));
+    }
+
+    /** 当前用户信息 + 角色 + 权限码 + 菜单树 + 企业信息，前端登录后调用一次 */
     @GetMapping("/me")
     public R<UserInfoVO> me() {
         Long userId = StpUtil.getLoginIdAsLong();
@@ -40,12 +52,13 @@ public class AuthController {
                 userService.getById(userId),
                 permissionService.getRoleCodes(userId),
                 permissionService.getPermissions(userId),
-                permissionService.getMenuTree(userId)));
+                permissionService.getMenuTree(userId),
+                tenantService.currentInfo()));
     }
 
     @PostMapping("/logout")
     public R<Void> logout() {
-        StpUtil.logout();
+        authService.logout();
         return R.ok();
     }
 

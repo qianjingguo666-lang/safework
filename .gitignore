@@ -7,3 +7,4 @@ target/
 # 密钥文件，绝对不能提交
 config/secret.yml
 start.ps1
+.env

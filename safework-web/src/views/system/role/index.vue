@@ -1,7 +1,7 @@
 <template>
   <div class="page-card">
     <div class="toolbar">
-      <span class="hint">企业管理员（admin）默认拥有全部权限，不需要分配</span>
+      <span class="hint">企业管理员（admin）默认拥有本企业套餐内的全部权限，不需要分配；可分配的功能由平台开通的套餐决定</span>
       <div class="spacer" />
       <el-button v-perm="'system:role:add'" type="primary" icon="Plus" @click="openCreate">新增角色</el-button>
     </div>

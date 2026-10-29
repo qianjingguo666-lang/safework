@@ -18,8 +18,14 @@ function Call($method, $path, $body, $token) {
     $text = [Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray())
     return $text | ConvertFrom-Json
 }
-function Login($tenant, $user) {
-    $r = Call POST '/auth/login' @{ tenantCode = $tenant; username = $user; password = 'admin123' }
+# 登录要先取验证码：开发环境（dev）后端会把答案放在 debugAnswer 里返回，脚本直接用它
+function LoginRaw($tenant, $user, $password) {
+    $c = (Call GET '/auth/captcha').data
+    if ($c.enabled -and -not $c.debugAnswer) { throw '后端没有返回验证码答案：请确认后端是用开发环境（dev）启动的' }
+    return Call POST '/auth/login' @{ tenantCode = $tenant; username = $user; password = $password; captchaKey = $c.captchaKey; captchaCode = $c.debugAnswer }
+}
+function Login($tenant, $user, $password = 'admin123') {
+    $r = LoginRaw $tenant $user $password
     if ($r.code -ne 200) { throw "登录失败 $tenant/$user：$($r.msg)" }
     return $r.data.token
 }

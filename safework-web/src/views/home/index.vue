@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <PlatformHome v-if="store.isPlatform" />
+  <div v-else>
     <div class="page-card welcome">
       <div>
         <h2>你好，{{ store.nickname }}</h2>
@@ -40,6 +41,7 @@ import { computed, onMounted, reactive } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { pageHazards, pageTickets } from '@/api'
 import { ROLE_NAMES } from '@/utils/dict'
+import PlatformHome from './PlatformHome.vue'
 
 const store = useUserStore()
 const canView = computed(() => store.hasPerm('ticket:list'))
@@ -73,6 +75,7 @@ const todo = computed(() => {
 })
 
 onMounted(async () => {
+  if (store.isPlatform) return
   if (canHazard.value) {
     hazardStats.forEach(async (s) => {
       s.count = (await pageHazards({ ...s.params, size: 1 })).total

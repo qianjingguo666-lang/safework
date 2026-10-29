@@ -43,7 +43,11 @@
         </el-icon>
         <span class="title">{{ $route.meta.title }}</span>
         <div class="spacer" />
-        <el-tag effect="plain" class="tenant">{{ store.tenantName }}</el-tag>
+        <el-tooltip v-if="tenantTip" :content="tenantTip" placement="bottom">
+          <el-tag effect="plain" class="tenant" :type="store.isPlatform ? 'danger' : 'primary'">
+            {{ store.tenantName }}<template v-if="store.tenant?.packageName"> · {{ store.tenant.packageName }}</template>
+          </el-tag>
+        </el-tooltip>
         <el-dropdown @command="onCommand">
           <span class="user">
             <el-avatar :size="28">{{ store.nickname.slice(0, 1) }}</el-avatar>
@@ -60,6 +64,7 @@
         </el-dropdown>
       </el-header>
       <el-main class="main">
+        <el-alert v-if="expireWarning" :title="expireWarning" type="warning" show-icon :closable="true" class="expire-alert" />
         <router-view />
       </el-main>
     </el-container>
@@ -94,12 +99,29 @@ const collapsed = ref(false)
 const ICONS = {
   setting: 'Setting', user: 'User', team: 'UserFilled', menu: 'Menu', safety: 'Warning', file: 'Document',
   shield: 'FirstAidKit', space: 'Box', hazard: 'WarningFilled', dept: 'OfficeBuilding', log: 'Tickets',
-  ai: 'MagicStick', chat: 'ChatDotRound', book: 'Reading'
+  ai: 'MagicStick', chat: 'ChatDotRound', book: 'Reading',
+  platform: 'Platform', company: 'OfficeBuilding', package: 'Present', login: 'Key', online: 'Monitor'
 }
 const iconOf = (name) => ICONS[name] || 'Document'
 const pages = (list = []) => list.filter((c) => c.menuType === 'C')
 
-const roleText = computed(() => store.roles.map((r) => ROLE_NAMES[r] || r).join('、') || '无')
+const tenantTip = computed(() => {
+  const t = store.tenant
+  if (!t) return ''
+  if (t.platform) return '运营平台：管理入驻企业、套餐'
+  const parts = [`企业编码：${t.tenantCode}`]
+  parts.push(t.expireTime ? `服务到期：${t.expireTime.slice(0, 10)}` : '服务期限：不限')
+  if (t.accountLimit) parts.push(`账号上限：${t.accountLimit} 个`)
+  return parts.join('　')
+})
+// 30 天内到期提醒续费
+const expireWarning = computed(() => {
+  const d = store.tenant?.daysLeft
+  if (d == null || d > 30) return ''
+  return d <= 0 ? '企业服务今天到期，请尽快联系平台续费' : `企业服务还有 ${d} 天到期（${store.tenant.expireTime.slice(0, 10)}），请及时联系平台续费`
+})
+
+const roleText = computed(() => store.isPlatform ? '平台管理员' : (store.roles.map((r) => ROLE_NAMES[r] || r).join('、') || '无'))
 
 const pwdVisible = ref(false)
 const pwdSaving = ref(false)
@@ -153,6 +175,7 @@ async function onCommand(cmd) {
 .spacer { flex: 1; }
 .user { display: flex; align-items: center; gap: 8px; cursor: pointer; outline: none; }
 .main { padding: 16px; }
+.expire-alert { margin-bottom: 12px; }
 @media (max-width: 768px) {
   .tenant, .name { display: none; }
 }

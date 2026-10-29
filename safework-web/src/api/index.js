@@ -1,6 +1,7 @@
 import request from './request'
 
 // ---------- 认证 ----------
+export const getCaptcha = () => request.get('/auth/captcha')
 export const login = (data) => request.post('/auth/login', data)
 export const getMe = () => request.get('/auth/me')
 export const logout = () => request.post('/auth/logout')
@@ -35,6 +36,28 @@ export const updateUser = (id, data) => request.put(`/system/user/${id}`, data)
 export const changeUserStatus = (id, status) => request.put(`/system/user/${id}/status`, { status })
 export const resetUserPassword = (id, password) => request.put(`/system/user/${id}/password`, { password })
 export const changePassword = (data) => request.post('/auth/password', data)
+export const unlockUser = (id) => request.put(`/system/user/${id}/unlock`)
+
+// ---------- 登录日志、在线用户 ----------
+export const pageLoginLogs = (params) => request.get('/system/loginlog/page', { params })
+export const listOnlineUsers = (params) => request.get('/system/online/list', { params })
+export const kickoutOnline = (sessionId) => request.delete(`/system/online/${sessionId}`)
+
+// ---------- 平台端：企业、套餐 ----------
+export const platformStats = () => request.get('/platform/tenant/stats')
+export const pageTenants = (params) => request.get('/platform/tenant/page', { params })
+export const createTenant = (data) => request.post('/platform/tenant', data)
+export const updateTenant = (id, data) => request.put(`/platform/tenant/${id}`, data)
+export const changeTenantStatus = (id, status) => request.put(`/platform/tenant/${id}/status`, { status })
+export const resetTenantAdminPassword = (id, password) => request.put(`/platform/tenant/${id}/admin-password`, { password })
+export const listPackages = () => request.get('/platform/package/list')
+export const packageOptions = () => request.get('/platform/package/options')
+export const packageMenuTree = () => request.get('/platform/package/menu-tree')
+export const createPackage = (data) => request.post('/platform/package', data)
+export const updatePackage = (id, data) => request.put(`/platform/package/${id}`, data)
+export const changePackageStatus = (id, status) => request.put(`/platform/package/${id}/status`, { status })
+export const removePackage = (id) => request.delete(`/platform/package/${id}`)
+export const pagePlatformLoginLogs = (params) => request.get('/platform/loginlog/page', { params })
 
 // ---------- 部门 ----------
 export const deptTree = () => request.get('/system/dept/tree')

@@ -15,4 +15,5 @@ public class UserInfoVO {
     private List<String> permissions;
     /** 只包含目录和页面，不含按钮 */
     private List<MenuVO> menus;
+    private TenantInfoVO tenant;
 }

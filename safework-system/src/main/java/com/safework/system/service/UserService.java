@@ -5,15 +5,18 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.common.exception.BizException;
+import com.safework.common.tenant.TenantContext;
 import com.safework.system.dto.UserCreateDTO;
 import com.safework.system.dto.UserOptionVO;
 import com.safework.system.dto.UserUpdateDTO;
 import com.safework.system.entity.SysRole;
+import com.safework.system.entity.SysTenant;
 import com.safework.system.entity.SysUser;
 import com.safework.system.entity.SysUserRole;
 import com.safework.system.mapper.SysRoleMapper;
 import com.safework.system.mapper.SysUserMapper;
 import com.safework.system.mapper.SysUserRoleMapper;
+import com.safework.system.security.LoginGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +37,8 @@ public class UserService {
     private final SysRoleMapper roleMapper;
     private final RoleService roleService;
     private final DeptService deptService;
+    private final TenantCache tenantCache;
+    private final LoginGuard loginGuard;
 
     /**
      * 分页查询：SQL 里不用写 tenant_id，插件会自动加上。
@@ -66,9 +71,11 @@ public class UserService {
                 .stream().collect(Collectors.toMap(SysRole::getId, SysRole::getRoleName));
         Map<Long, List<String>> userRoles = links.stream().collect(Collectors.groupingBy(SysUserRole::getUserId,
                 Collectors.mapping(l -> roleNames.getOrDefault(l.getRoleId(), "?"), Collectors.toList())));
+        Long tenantId = TenantContext.get();
         for (SysUser u : users) {
             u.setDeptName(deptNames.get(u.getDeptId()));
             u.setRoleNames(userRoles.getOrDefault(u.getId(), new ArrayList<>()));
+            u.setLocked(loginGuard.lockedSeconds(tenantId, u.getUsername()) > 0);
         }
     }
 
@@ -98,6 +105,7 @@ public class UserService {
     /** 新增用户：tenant_id 由插件自动写入当前租户 */
     @Transactional(rollbackFor = Exception.class)
     public Long create(UserCreateDTO dto) {
+        checkAccountLimit();
         Long count = userMapper.selectCount(Wrappers.<SysUser>lambdaQuery()
                 .eq(SysUser::getUsername, dto.getUsername()));
         if (count > 0) {
@@ -142,6 +150,24 @@ public class UserService {
         if (status == 0) {
             StpUtil.logout(id);
         }
+    }
+
+    /** 套餐账号上限：由平台在开通企业时设置 */
+    private void checkAccountLimit() {
+        SysTenant tenant = tenantCache.getTenant(TenantContext.get());
+        if (tenant == null || tenant.getAccountLimit() == null) {
+            return;
+        }
+        long total = userMapper.selectCount(null);
+        if (total >= tenant.getAccountLimit()) {
+            throw new BizException("账号数量已达上限（" + tenant.getAccountLimit() + " 个），请联系平台扩容");
+        }
+    }
+
+    /** 解除“密码错误次数过多”的锁定 */
+    public void unlock(Long id) {
+        SysUser user = getById(id);
+        loginGuard.unlock(TenantContext.get(), user.getUsername());
     }
 
     /** 管理员重置密码：重置后该用户需要重新登录 */

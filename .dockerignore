@@ -1,0 +1,9 @@
+.git
+**/target
+**/node_modules
+safework-web
+.idea
+*.log
+# 密钥绝不能打进镜像
+config/secret.yml
+.env

@@ -19,7 +19,14 @@
       </div>
 
       <el-table v-loading="loading" :data="list" stripe>
-        <el-table-column prop="username" label="用户名" width="120" />
+        <el-table-column label="用户名" width="140">
+          <template #default="{ row }">
+            {{ row.username }}
+            <el-tooltip v-if="row.locked" content="连续输错密码次数过多，已被锁定" placement="top">
+              <el-tag type="danger" size="small" effect="dark" class="lock-tag">已锁定</el-tag>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column prop="nickname" label="昵称" min-width="150" />
         <el-table-column prop="deptName" label="部门" width="120" />
         <el-table-column label="角色" min-width="150">
@@ -35,8 +42,9 @@
             <el-tag v-else :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '正常' : '停用' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="210" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
+            <el-button v-if="row.locked" v-perm="'system:user:unlock'" link type="danger" @click="unlock(row)">解锁</el-button>
             <el-button v-perm="'system:user:edit'" link type="primary" @click="openEdit(row)">修改</el-button>
             <el-button v-perm="'system:user:role'" link type="primary" @click="openRoles(row)">分配角色</el-button>
             <el-button v-perm="'system:user:reset'" link type="warning" @click="resetPwd(row)">重置密码</el-button>
@@ -92,7 +100,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import {
-  assignUserRoles, changeUserStatus, createUser, deptTree, getUserRoles, listRoles, pageUsers, resetUserPassword, updateUser
+  assignUserRoles, changeUserStatus, createUser, deptTree, getUserRoles, listRoles, pageUsers, resetUserPassword, unlockUser, updateUser
 } from '@/api'
 
 const store = useUserStore()
@@ -189,6 +197,12 @@ async function resetPwd(row) {
   ElMessage.success('密码已重置')
 }
 
+async function unlock(row) {
+  await unlockUser(row.id)
+  row.locked = false
+  ElMessage.success(`已解锁，${row.nickname} 现在可以重新登录`)
+}
+
 const roleVisible = ref(false)
 const checkedRoles = ref([])
 const current = ref(null)
@@ -224,6 +238,7 @@ onMounted(async () => {
 .all { margin-top: 8px; }
 .main-panel { flex: 1; min-width: 0; }
 .role-tag { margin-right: 4px; }
+.lock-tag { margin-left: 4px; }
 .role-item { display: flex; align-items: center; gap: 12px; line-height: 36px; }
 .muted { color: #999; font-size: 12px; }
 @media (max-width: 900px) {

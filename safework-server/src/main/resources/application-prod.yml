@@ -1,0 +1,9 @@
+# 生产环境（docker-compose.prod.yml 设置 SPRING_PROFILES_ACTIVE=prod）
+safework:
+  security:
+    captcha-enabled: true
+    captcha-debug: false
+
+logging:
+  level:
+    com.safework: info
