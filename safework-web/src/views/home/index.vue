@@ -67,6 +67,7 @@ const todo = computed(() => {
   if (store.hasPerm('ticket:approve')) list.push('审批“待审批”状态的作业票，检查安全措施和气体检测数据')
   if (store.hasPerm('ticket:add')) list.push('申请作业票：填写作业信息、选择监护人、录入气体检测数据后提交审批')
   if (store.roles.includes('guardian')) list.push('在现场确认安全措施，复测气体后点击“开始作业”，作业结束后点击“作业完成”')
+  if (store.hasPerm('ai:chat')) list.push('有安全制度方面的问题，可以在【AI 助手 → 安全问答】里提问，回答会标注出处')
   if (!list.length) list.push('暂无可用功能，请联系企业管理员分配角色')
   return list
 })

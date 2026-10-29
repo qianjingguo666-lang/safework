@@ -4,6 +4,13 @@ server:
 spring:
   application:
     name: safework
+  # API Key 等密钥放在项目根目录的 config/secret.yml（已加入 .gitignore，不会提交到 GitHub）
+  config:
+    import: optional:file:./config/secret.yml
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     # 本地默认连 docker-compose 起的 MySQL（映射到 3307，避免和你电脑上已有的 MySQL 冲突）
@@ -51,3 +58,30 @@ management:
 logging:
   level:
     com.safework: debug
+
+# ============ AI 助手 ============
+# 不配置 api-key 也能运行：没有对话模型时只返回检索到的原文；没有向量模型时只用关键词检索
+safework:
+  ai:
+    # 每人每分钟最多提问次数（控制大模型调用成本）
+    rate-limit-per-minute: 10
+    chat:
+      # 讯飞星火（OpenAI 兼容接口），api-key 填控制台的 APIPassword
+      base-url: ${AI_CHAT_BASE_URL:https://spark-api-open.xf-yun.com/v1}
+      api-key: ${AI_CHAT_API_KEY:}
+      model: ${AI_CHAT_MODEL:lite}
+      temperature: 0.3
+      timeout-seconds: 60
+    embedding:
+      # 阿里云百炼向量模型（OpenAI 兼容接口）
+      base-url: ${AI_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      api-key: ${AI_EMBEDDING_API_KEY:}
+      model: ${AI_EMBEDDING_MODEL:text-embedding-v3}
+      dimensions: 1024
+      batch-size: 10
+    rag:
+      chunk-size: 500
+      chunk-overlap: 80
+      top-k: 4
+      # 低于这个分数认为没检索到，直接回答“知识库里没有”，不让模型瞎编
+      min-score: 0.25

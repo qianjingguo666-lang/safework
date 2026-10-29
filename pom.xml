@@ -23,6 +23,7 @@
         <module>safework-system</module>
         <module>safework-safety</module>
         <module>safework-ticket</module>
+        <module>safework-ai</module>
         <module>safework-server</module>
     </modules>
 
@@ -53,6 +54,11 @@
             <dependency>
                 <groupId>com.safework</groupId>
                 <artifactId>safework-ticket</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.safework</groupId>
+                <artifactId>safework-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

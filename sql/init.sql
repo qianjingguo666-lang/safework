@@ -146,7 +146,14 @@ INSERT INTO sys_menu (id, parent_id, menu_name, menu_type, path, component, perm
 (1031, 103, '新增部门', 'F', NULL,            NULL,                 'system:dept:add',  NULL,       1,  NOW(), NOW()),
 (1032, 103, '修改部门', 'F', NULL,            NULL,                 'system:dept:edit', NULL,       2,  NOW(), NOW()),
 (1033, 103, '删除部门', 'F', NULL,            NULL,                 'system:dept:remove', NULL,     3,  NOW(), NOW()),
-(104,  1,   '操作日志', 'C', '/system/log',   'system/log/index',   'system:log:list',  'log',      5,  NOW(), NOW());
+(104,  1,   '操作日志', 'C', '/system/log',   'system/log/index',   'system:log:list',  'log',      5,  NOW(), NOW()),
+-- AI 助手
+(4,    0,   'AI 助手',  'M', '/ai',           NULL,                 NULL,               'ai',       30, NOW(), NOW()),
+(400,  4,   '安全问答', 'C', '/ai/chat',      'ai/chat/index',      'ai:chat',          'chat',     1,  NOW(), NOW()),
+(401,  4,   '知识库',   'C', '/ai/knowledge', 'ai/knowledge/index', 'ai:knowledge:list','book',     2,  NOW(), NOW()),
+(4011, 401, '上传文档', 'F', NULL,            NULL,                 'ai:knowledge:upload', NULL,    1,  NOW(), NOW()),
+(4012, 401, '删除文档', 'F', NULL,            NULL,                 'ai:knowledge:remove', NULL,    2,  NOW(), NOW()),
+(2003, 200, 'AI 预审',  'F', NULL,            NULL,                 'ai:ticket:review', NULL,       3,  NOW(), NOW());
 
 -- 每个企业预置 4 个角色，正好对应后面作业票审批流的各个环节
 INSERT INTO sys_role (id, tenant_id, role_code, role_name, sort, remark, create_time, update_time) VALUES
@@ -186,7 +193,14 @@ INSERT INTO sys_role_menu (id, tenant_id, role_id, menu_id) VALUES
 (30, 1, 14, 3), (31, 1, 14, 300), (32, 1, 14, 301), (33, 1, 14, 3011),
 (41, 2, 22, 3), (42, 2, 22, 300), (43, 2, 22, 301), (44, 2, 22, 3011), (45, 2, 22, 3012),
 (46, 2, 23, 3), (47, 2, 23, 300), (48, 2, 23, 301), (49, 2, 23, 3011),
-(50, 2, 24, 3), (51, 2, 24, 300), (52, 2, 24, 301), (53, 2, 24, 3011);
+(50, 2, 24, 3), (51, 2, 24, 300), (52, 2, 24, 301), (53, 2, 24, 3011),
+-- AI 助手：所有人都能问答；安全员还能管理知识库、使用作业票 AI 预审
+(61, 1, 12, 4), (62, 1, 12, 400), (63, 1, 12, 401), (64, 1, 12, 4011), (65, 1, 12, 4012), (66, 1, 12, 2003),
+(67, 1, 13, 4), (68, 1, 13, 400),
+(69, 1, 14, 4), (70, 1, 14, 400),
+(71, 2, 22, 4), (72, 2, 22, 400), (73, 2, 22, 401), (74, 2, 22, 4011), (75, 2, 22, 4012), (76, 2, 22, 2003),
+(77, 2, 23, 4), (78, 2, 23, 400),
+(79, 2, 24, 4), (80, 2, 24, 400);
 
 -- =====================================================================
 -- 第三部分：作业票、审批流
@@ -399,3 +413,63 @@ INSERT INTO hazard_log (id, tenant_id, hazard_id, action, from_status, to_status
 (1, 1, 1, 'REPORT', NULL, 'REPORTED', 104, '赵六（监护人）', NULL, DATE_SUB(NOW(), INTERVAL 2 DAY)),
 (2, 1, 2, 'REPORT', NULL, 'REPORTED', 103, '李四（作业负责人）', NULL, DATE_SUB(NOW(), INTERVAL 5 DAY)),
 (3, 1, 2, 'ASSIGN', 'REPORTED', 'RECTIFYING', 102, '张三（安全员）', '更换垫片，整改前办理受限空间作业票', DATE_SUB(NOW(), INTERVAL 4 DAY));
+
+-- =====================================================================
+-- 第六部分：AI 助手（知识库 RAG、问答记录）
+-- =====================================================================
+
+DROP TABLE IF EXISTS ai_document;
+CREATE TABLE ai_document (
+    id            BIGINT        NOT NULL COMMENT '主键',
+    tenant_id     BIGINT        NOT NULL COMMENT '租户ID',
+    title         VARCHAR(200)  NOT NULL COMMENT '文档标题',
+    file_name     VARCHAR(255)  NOT NULL COMMENT '原始文件名',
+    file_type     VARCHAR(10)   NOT NULL COMMENT 'pdf / txt / md',
+    file_size     BIGINT        NOT NULL DEFAULT 0 COMMENT '字节数',
+    char_count    INT           NOT NULL DEFAULT 0 COMMENT '提取出的字数',
+    chunk_count   INT           NOT NULL DEFAULT 0 COMMENT '切分片段数',
+    embedded      TINYINT       NOT NULL DEFAULT 0 COMMENT '是否已生成向量',
+    status        VARCHAR(20)   NOT NULL COMMENT 'READY 可用 / FAILED 失败',
+    error_msg     VARCHAR(500)  NULL,
+    uploader_id   BIGINT        NULL,
+    uploader_name VARCHAR(50)   NULL,
+    create_time   DATETIME      NULL,
+    update_time   DATETIME      NULL,
+    deleted       TINYINT       NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    KEY idx_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识库文档';
+
+DROP TABLE IF EXISTS ai_chunk;
+CREATE TABLE ai_chunk (
+    id          BIGINT      NOT NULL COMMENT '主键',
+    tenant_id   BIGINT      NOT NULL COMMENT '租户ID',
+    document_id BIGINT      NOT NULL COMMENT '所属文档',
+    chunk_index INT         NOT NULL COMMENT '片段序号',
+    page_no     INT         NULL COMMENT '所在页码（PDF）',
+    content     TEXT        NOT NULL COMMENT '片段原文',
+    embedding   MEDIUMTEXT  NULL COMMENT '向量（float32 小端序后 Base64 编码）',
+    create_time DATETIME    NULL,
+    PRIMARY KEY (id),
+    KEY idx_tenant_doc (tenant_id, document_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识库片段';
+
+DROP TABLE IF EXISTS ai_chat_log;
+CREATE TABLE ai_chat_log (
+    id           BIGINT        NOT NULL COMMENT '主键',
+    tenant_id    BIGINT        NOT NULL COMMENT '租户ID',
+    biz_type     VARCHAR(20)   NOT NULL COMMENT 'CHAT 问答 / REVIEW 作业票预审',
+    user_id      BIGINT        NULL,
+    user_name    VARCHAR(50)   NULL,
+    question     VARCHAR(2000) NOT NULL,
+    answer       TEXT          NULL,
+    sources      TEXT          NULL COMMENT '引用的片段（JSON）',
+    hit          TINYINT       NOT NULL DEFAULT 1 COMMENT '知识库是否命中，未命中的问题可以用来补充知识库',
+    model        VARCHAR(50)   NULL,
+    status       TINYINT       NOT NULL DEFAULT 1 COMMENT '1成功 0失败',
+    error_msg    VARCHAR(500)  NULL,
+    cost_ms      BIGINT        NULL,
+    create_time  DATETIME      NULL,
+    PRIMARY KEY (id),
+    KEY idx_tenant_time (tenant_id, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 问答记录';

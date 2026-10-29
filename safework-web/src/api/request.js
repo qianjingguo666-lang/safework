@@ -27,10 +27,14 @@ request.interceptors.response.use(
       router.replace({ path: '/login', query: { redirect: router.currentRoute.value.fullPath } })
     }
     ElMessage.error(msg || '请求失败')
-    return Promise.reject(new Error(msg))
+    const error = new Error(msg)
+    // 标记为“已提示过”，全局的未处理异常监听会忽略它，避免控制台重复报错
+    error.handled = true
+    return Promise.reject(error)
   },
   (err) => {
     ElMessage.error(err.code === 'ECONNABORTED' ? '请求超时' : '无法连接服务器，请确认后端已启动')
+    err.handled = true
     return Promise.reject(err)
   }
 )

@@ -61,3 +61,19 @@ export const getHazard = (id) => request.get(`/safety/hazard/${id}`)
 export const reportHazard = (data) => request.post('/safety/hazard', data)
 /** action: assign / revoke / rectify / verify-pass / verify-fail */
 export const hazardAction = (id, action, data = {}) => request.post(`/safety/hazard/${id}/${action}`, data)
+
+// ---------- AI ----------
+export const aiStatus = () => request.get('/ai/status')
+export const pageKnowledge = (params) => request.get('/ai/knowledge/page', { params })
+export const knowledgeChunks = (id) => request.get(`/ai/knowledge/${id}/chunks`, { params: { limit: 100 } })
+export const uploadKnowledge = (file, title) => {
+  const form = new FormData()
+  form.append('file', file)
+  if (title) form.append('title', title)
+  // 上传后要解析、切分、生成向量，比普通接口慢，单独放宽超时
+  return request.post('/ai/knowledge/upload', form, { timeout: 180000 })
+}
+export const embedKnowledge = (id) => request.post(`/ai/knowledge/${id}/embed`, null, { timeout: 180000 })
+export const removeKnowledge = (id) => request.delete(`/ai/knowledge/${id}`)
+export const pageChatLogs = (params) => request.get('/ai/chat/logs', { params })
+export const reviewTicket = (id) => request.post(`/ai/ticket/${id}/review`, null, { timeout: 90000 })

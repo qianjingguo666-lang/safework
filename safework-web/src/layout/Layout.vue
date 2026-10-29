@@ -93,7 +93,8 @@ const collapsed = ref(false)
 // 后端菜单里的 icon 名称 → Element Plus 图标组件名
 const ICONS = {
   setting: 'Setting', user: 'User', team: 'UserFilled', menu: 'Menu', safety: 'Warning', file: 'Document',
-  shield: 'FirstAidKit', space: 'Box', hazard: 'WarningFilled', dept: 'OfficeBuilding', log: 'Tickets'
+  shield: 'FirstAidKit', space: 'Box', hazard: 'WarningFilled', dept: 'OfficeBuilding', log: 'Tickets',
+  ai: 'MagicStick', chat: 'ChatDotRound', book: 'Reading'
 }
 const iconOf = (name) => ICONS[name] || 'Document'
 const pages = (list = []) => list.filter((c) => c.menuType === 'C')

@@ -6,10 +6,38 @@
         <span class="type">{{ TICKET_TYPES[t.ticketType]?.label }}</span>
       </div>
 
-      <div v-if="actions.length" class="actions">
+      <div v-if="actions.length || canReview" class="actions">
         <el-button v-for="a in actions" :key="a" :type="BTN_TYPE[a] || 'default'" :loading="busy === a" @click="run(a)">
           {{ TICKET_ACTIONS[a] }}
         </el-button>
+        <el-button v-if="canReview" icon="MagicStick" :loading="reviewing" class="ai-btn" @click="doReview">AI 预审</el-button>
+      </div>
+
+      <div v-if="review" class="review">
+        <div class="review-head">
+          <b>AI 预审结果</b>
+          <el-tag :type="RISK[review.riskLevel].type" effect="dark">{{ RISK[review.riskLevel].label }}</el-tag>
+          <span v-if="review.ai?.conclusion" class="conclusion">{{ review.ai.conclusion }}</span>
+          <span class="muted">用时 {{ (review.costMs / 1000).toFixed(1) }} 秒</span>
+        </div>
+        <p v-if="review.ai?.summary" class="summary">{{ review.ai.summary }}</p>
+        <div class="find-title">规则检查（{{ review.ruleFindings.length }}）</div>
+        <div v-if="!review.ruleFindings.length" class="muted">未发现问题</div>
+        <div v-for="(f, i) in review.ruleFindings" :key="'r' + i" class="finding">
+          <el-tag size="small" :type="RISK[f.level]?.type">{{ RISK[f.level]?.short }}</el-tag>
+          <span>{{ f.problem }}</span><span class="sugg">→ {{ f.suggestion }}</span>
+        </div>
+        <template v-if="review.ai?.issues?.length">
+          <div class="find-title">大模型分析（{{ review.ai.issues.length }}）</div>
+          <div v-for="(f, i) in review.ai.issues" :key="'a' + i" class="finding">
+            <el-tag size="small" :type="RISK[f.level]?.type || 'info'">{{ RISK[f.level]?.short || f.level }}</el-tag>
+            <span>{{ f.item ? f.item + '：' : '' }}{{ f.problem }}</span><span v-if="f.suggestion" class="sugg">→ {{ f.suggestion }}</span>
+          </div>
+        </template>
+        <el-alert v-if="!review.aiAvailable" type="info" :closable="false" title="未配置大模型，仅展示规则检查结果" class="ai-tip" />
+        <el-alert v-else-if="review.aiError" type="warning" :closable="false" :title="`大模型分析失败（规则检查结果仍然有效）：${review.aiError}`" class="ai-tip" />
+        <div v-if="review.sources?.length" class="muted refs">参考制度：{{ [...new Set(review.sources.map((s) => '《' + s.documentTitle + '》'))].join('、') }}</div>
+        <div class="muted">AI 意见仅供参考，是否批准由审批人决定</div>
       </div>
 
       <el-descriptions :column="2" border size="small" class="block">
@@ -71,7 +99,8 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTicket, ticketAction } from '@/api'
+import { getTicket, reviewTicket, ticketAction } from '@/api'
+import { useUserStore } from '@/stores/user'
 import { TICKET_ACTIONS, TICKET_STATUS, TICKET_TYPES } from '@/utils/dict'
 
 const emit = defineEmits(['changed', 'edit'])
@@ -85,7 +114,26 @@ const BTN_TYPE = { SUBMIT: 'primary', APPROVE: 'success', REJECT: 'danger', STAR
 const gasRequired = computed(() => TICKET_TYPES[t.value?.ticketType]?.gas)
 const fmt = (v, unit) => (v == null ? '-' : `${v} ${unit}`)
 
+const store = useUserStore()
+const canReview = computed(() => store.hasPerm('ai:ticket:review') && ['DRAFT', 'PENDING', 'REJECTED', 'APPROVED'].includes(t.value?.status))
+const RISK = {
+  HIGH: { label: '高风险', short: '必须整改', type: 'danger' },
+  MEDIUM: { label: '中风险', short: '建议补充', type: 'warning' },
+  LOW: { label: '低风险', short: '提示', type: 'success' }
+}
+const review = ref(null)
+const reviewing = ref(false)
+async function doReview() {
+  reviewing.value = true
+  try {
+    review.value = await reviewTicket(t.value.id)
+  } finally {
+    reviewing.value = false
+  }
+}
+
 async function open(id) {
+  if (t.value?.id !== id) review.value = null
   visible.value = true
   loading.value = true
   try {
@@ -164,4 +212,15 @@ h4 { margin: 20px 0 10px; }
 .flow { color: #888; margin-left: 8px; font-size: 12px; }
 .comment { margin-top: 4px; padding: 6px 10px; background: #f6f8fb; border-radius: 4px; color: #555; }
 .start-form { margin-top: 16px; }
+.ai-btn { margin-left: auto; color: #6b46c1; border-color: #d6c8f5; }
+.review { border: 1px solid #e3d9fb; background: #faf8ff; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; font-size: 13px; }
+.review-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.conclusion { font-weight: 600; color: #6b46c1; }
+.summary { margin: 8px 0 0; color: #444; }
+.find-title { margin: 10px 0 4px; color: #888; font-size: 12px; }
+.finding { display: flex; gap: 8px; align-items: baseline; line-height: 1.9; }
+.sugg { color: #888; }
+.ai-tip { margin-top: 8px; }
+.refs { margin-top: 8px; }
+.muted { color: #999; font-size: 12px; }
 </style>
