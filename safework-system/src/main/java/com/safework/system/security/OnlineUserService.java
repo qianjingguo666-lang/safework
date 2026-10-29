@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.safework.common.exception.BizException;
+import com.safework.system.message.MessagePushService;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,10 +41,13 @@ public class OnlineUserService {
     private final ObjectMapper json = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final long timeoutSeconds;
+    private final MessagePushService pushService;
 
-    public OnlineUserService(StringRedisTemplate redis, @Value("${sa-token.timeout:86400}") long timeoutSeconds) {
+    public OnlineUserService(StringRedisTemplate redis, @Value("${sa-token.timeout:86400}") long timeoutSeconds,
+                             MessagePushService pushService) {
         this.redis = redis;
         this.timeoutSeconds = timeoutSeconds;
+        this.pushService = pushService;
     }
 
     /** 存在 Redis 里的内容（含 token，只在服务端使用） */
@@ -114,6 +118,8 @@ public class OnlineUserService {
         }
         StpUtil.kickoutByTokenValue(s.getToken());
         redis.opsForHash().delete(key, sessionId);
+        // 断开消息推送长连接：被踢的会话重连时 token 已失效，会收到 401；这个人其他正常的会话会自动重连
+        pushService.disconnect(s.getUserId());
         return toVO(sessionId, s, false);
     }
 

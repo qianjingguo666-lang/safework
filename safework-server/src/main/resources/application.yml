@@ -80,6 +80,17 @@ safework:
     fail-window-minutes: 15
     lock-minutes: 15
 
+  # ============ 定时任务 ============
+  job:
+    # 关闭后不会自动执行，平台【定时任务】页面仍然可以手动执行
+    enabled: ${JOB_ENABLED:true}
+    # 覆盖默认执行时间，例如：
+    # cron:
+    #   hazard-deadline: "0 0 9 * * *"
+    login-log-days: 180
+    read-message-days: 90
+    job-log-days: 30
+
 # ============ AI 助手 ============
 # 不配置 api-key 也能运行：没有对话模型时只返回检索到的原文；没有向量模型时只用关键词检索
   ai:

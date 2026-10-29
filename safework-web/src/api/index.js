@@ -100,3 +100,17 @@ export const embedKnowledge = (id) => request.post(`/ai/knowledge/${id}/embed`, 
 export const removeKnowledge = (id) => request.delete(`/ai/knowledge/${id}`)
 export const pageChatLogs = (params) => request.get('/ai/chat/logs', { params })
 export const reviewTicket = (id) => request.post(`/ai/ticket/${id}/review`, null, { timeout: 90000 })
+
+// ---------- 消息、公告、定时任务 ----------
+export const pageMessages = (params) => request.get('/message/page', { params })
+export const unreadMessages = () => request.get('/message/unread')
+export const latestMessages = () => request.get('/message/latest')
+export const readMessage = (id) => request.put(`/message/${id}/read`)
+export const readAllMessages = (category) => request.put('/message/read-all', null, { params: category ? { category } : {} })
+export const getNotice = (id) => request.get(`/message/notice/${id}`)
+export const pageNotices = (params) => request.get('/system/notice/page', { params })
+export const publishNotice = (data) => request.post('/system/notice', data)
+export const withdrawNotice = (id) => request.delete(`/system/notice/${id}`)
+export const listJobs = () => request.get('/platform/job/list')
+export const pageJobLogs = (params) => request.get('/platform/job/log/page', { params })
+export const runJob = (code) => request.post(`/platform/job/${code}/run`, null, { timeout: 120000 })

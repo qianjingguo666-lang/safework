@@ -6,6 +6,7 @@ import com.safework.common.tenant.TenantContext;
 import com.safework.system.entity.SysTenant;
 import com.safework.system.service.AuthService;
 import com.safework.system.service.TenantCache;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
@@ -28,7 +29,8 @@ public class TenantInterceptor implements AsyncHandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest req, HttpServletResponse resp, Object handler) {
-        if (!StpUtil.isLogin()) {
+        // 长连接结束时的二次分发（ASYNC）不需要租户，也不再做检查
+        if (req.getDispatcherType() == DispatcherType.ASYNC || !StpUtil.isLogin()) {
             return true;
         }
         Object raw = StpUtil.getSession().get(AuthService.SESSION_TENANT_ID);

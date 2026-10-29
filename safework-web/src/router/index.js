@@ -20,6 +20,8 @@ const routes = [
     redirect: '/home',
     children: [
       { path: 'home', component: () => import('@/views/home/index.vue'), meta: { title: '首页' } },
+      // 消息中心：所有登录用户都有，不走菜单权限
+      { path: 'message', component: () => import('@/views/message/index.vue'), meta: { title: '消息中心' } },
       { path: '403', component: () => import('@/views/error/403.vue'), meta: { title: '无权限' } }
     ]
   }

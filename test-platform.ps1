@@ -155,7 +155,7 @@ $r1 = Call GET '/auth/me' $null $tWorker
 $r2 = Call GET '/auth/me' $null $tWorker2
 $kicked = @($r1, $r2) | Where-Object { $_.code -eq 401 }
 Write-Host "  被踢的会话收到：$($kicked.msg)" -ForegroundColor DarkGray
-Check '被踢的会话 401“已被管理员强制下线”，另一个会话不受影响' (@($kicked).Count -eq 1 -and $kicked.msg.Contains('强制下线'))
+Check '被踢的会话 401「已被管理员强制下线」，另一个会话不受影响' (@($kicked).Count -eq 1 -and $kicked.msg.Contains('强制下线'))
 $r = Call GET '/system/online/list' $null $tDemo
 Check '演示化工看不到这个企业的在线用户' (-not ($r.data | Where-Object { $_.username -eq 'worker' }))
 

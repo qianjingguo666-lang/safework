@@ -26,4 +26,14 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
     @InterceptorIgnore(tenantLine = "true")
     @Select("SELECT tenant_id AS tenantId, COUNT(*) AS cnt FROM sys_user WHERE deleted = 0 GROUP BY tenant_id")
     List<Map<String, Object>> countGroupByTenant();
+
+    /** 拥有某个权限码的正常用户（通过角色 → 菜单），企业管理员另外查询。租户插件会给关联的表都加上 tenant_id 条件 */
+    @Select("SELECT DISTINCT u.id FROM sys_user u " +
+            "JOIN sys_user_role ur ON ur.user_id = u.id " +
+            "JOIN sys_role r ON r.id = ur.role_id " +
+            "JOIN sys_role_menu rm ON rm.role_id = r.id " +
+            "JOIN sys_menu m ON m.id = rm.menu_id " +
+            "WHERE m.perms = #{perm} AND m.status = 1 AND m.deleted = 0 " +
+            "AND r.status = 1 AND r.deleted = 0 AND u.status = 1 AND u.deleted = 0")
+    List<Long> selectIdsByPermission(@Param("perm") String perm);
 }

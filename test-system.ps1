@@ -70,7 +70,7 @@ $u = (Call GET "/system/user/page?keyword=$name" $null $tAdmin).data.records[0]
 Write-Host "  部门 = $($u.deptName)  角色 = $($u.roleNames -join '、')"
 Check '列表显示部门和角色' ($u.deptName -eq "测试车间$ts" -and ($u.roleNames -contains '作业负责人'))
 $p = (Call GET '/system/user/page?deptId=1101&size=100' $null $tAdmin).data
-Check '按“生产部”筛选，能查到下级车间的用户' (@($p.records | Where-Object { $_.username -eq $name }).Count -eq 1)
+Check '按「生产部」筛选，能查到下级车间的用户' (@($p.records | Where-Object { $_.username -eq $name }).Count -eq 1)
 $r = Call DELETE "/system/dept/$deptId" $null $tAdmin; Show $r
 Check '部门下有用户时不能删除' ($r.code -eq 400)
 

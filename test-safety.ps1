@@ -113,7 +113,7 @@ $r = Call POST "/safety/hazard/$hid/rectify" @{ rectifyMeasure = '已关闭排�
 Check '整改人提交整改' ($r.code -eq 200)
 $r = Call POST "/safety/hazard/$hid/verify-fail" @{} $tZhang; Show $r
 Check '验收不通过必须写原因' ($r.code -eq 400)
-$r = Call POST "/safety/hazard/$hid/verify-fail" @{ comment = '阀门未挂“禁止操作”牌' } $tZhang
+$r = Call POST "/safety/hazard/$hid/verify-fail" @{ comment = '阀门未挂「禁止操作」牌' } $tZhang
 Check '验收不通过，退回整改中' ($r.code -eq 200 -and (Call GET "/safety/hazard/$hid" $null $tLisi).data.hazard.status -eq 'RECTIFYING')
 Call POST "/safety/hazard/$hid/rectify" @{ rectifyMeasure = '已关闭排水阀并挂牌上锁' } $tLisi | Out-Null
 $r = Call POST "/safety/hazard/$hid/verify-pass" @{ comment = '现场复查合格' } $tZhang

@@ -72,6 +72,7 @@ docker compose -f docker-compose.prod.yml ps
 - `sql/init.sql` 只在**第一次**创建数据库时执行。之后修改表结构，执行 `sql/upgrade/` 里对应版本的升级脚本，不能删数据卷重建（会丢数据）：
   ```bash
   docker compose -f docker-compose.prod.yml exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 safework' < sql/upgrade/v2-platform-security.sql
+  # 之后的版本同理，例如 v3-message-job.sql，按版本号顺序执行
   ```
 - 平台管理员账号 `platform / admin / admin123` 部署后**第一时间修改密码**（右上角 → 修改密码）
 - 生产环境 `SPRING_PROFILES_ACTIVE=prod`：验证码答案不会返回给前端，测试脚本不能直接对生产环境运行

@@ -323,7 +323,7 @@ public class TenantService {
                 .collect(Collectors.toMap(SysTenantPackage::getId, SysTenantPackage::getPackageName, (a, b) -> a));
     }
 
-    static Long daysLeft(LocalDateTime expireTime) {
+    public static Long daysLeft(LocalDateTime expireTime) {
         if (expireTime == null) {
             return null;
         }

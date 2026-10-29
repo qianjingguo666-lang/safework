@@ -43,6 +43,27 @@
         </el-icon>
         <span class="title">{{ $route.meta.title }}</span>
         <div class="spacer" />
+        <el-popover v-model:visible="bellVisible" placement="bottom-end" :width="360" trigger="click" popper-class="bell-pop">
+          <template #reference>
+            <el-badge :value="msg.unread" :hidden="!msg.unread" :max="99" class="bell">
+              <el-icon :size="20" :title="msg.connected ? '消息实时推送已连接' : '消息'"><Bell /></el-icon>
+            </el-badge>
+          </template>
+          <div class="bell-head">
+            <span>未读消息 {{ msg.unread }}</span>
+            <el-button link type="primary" :disabled="!msg.unread" @click="readAll">全部已读</el-button>
+          </div>
+          <div v-if="!msg.latest.length" class="bell-empty">没有未读消息</div>
+          <div v-for="m in msg.latest" :key="m.id" class="bell-item" @click="openMsg(m)">
+            <div class="bell-title">
+              <el-tag size="small" :type="CATEGORY[m.category]?.type" effect="plain">{{ CATEGORY[m.category]?.label }}</el-tag>
+              <span>{{ m.title }}</span>
+            </div>
+            <div class="bell-content">{{ m.content }}</div>
+            <div class="bell-time">{{ m.createTime }}<template v-if="m.senderName"> · {{ m.senderName }}</template></div>
+          </div>
+          <div class="bell-foot"><el-button link type="primary" @click="goMessages">查看全部消息</el-button></div>
+        </el-popover>
         <el-tooltip v-if="tenantTip" :content="tenantTip" placement="bottom">
           <el-tag effect="plain" class="tenant" :type="store.isPlatform ? 'danger' : 'primary'">
             {{ store.tenantName }}<template v-if="store.tenant?.packageName"> · {{ store.tenant.packageName }}</template>
@@ -84,23 +105,45 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { changePassword } from '@/api'
+import { changePassword, readAllMessages } from '@/api'
+import { CATEGORY, useMessageStore } from '@/stores/message'
 import { ROLE_NAMES } from '@/utils/dict'
 
 const store = useUserStore()
+const msg = useMessageStore()
 const router = useRouter()
-const collapsed = ref(false)
+
+// 站内消息：登录后建立实时推送连接
+const bellVisible = ref(false)
+onMounted(() => msg.connect())
+onBeforeUnmount(() => msg.disconnect())
+async function readAll() {
+  await readAllMessages()
+  msg.unread = 0
+  msg.latest = []
+}
+function openMsg(m) {
+  bellVisible.value = false
+  msg.open(m)
+}
+function goMessages() {
+  bellVisible.value = false
+  router.push('/message')
+}
+// 手机上默认收起侧边栏，否则内容区只剩一百多像素宽
+const collapsed = ref(window.innerWidth < 768)
 
 // 后端菜单里的 icon 名称 → Element Plus 图标组件名
 const ICONS = {
   setting: 'Setting', user: 'User', team: 'UserFilled', menu: 'Menu', safety: 'Warning', file: 'Document',
   shield: 'FirstAidKit', space: 'Box', hazard: 'WarningFilled', dept: 'OfficeBuilding', log: 'Tickets',
   ai: 'MagicStick', chat: 'ChatDotRound', book: 'Reading',
-  platform: 'Platform', company: 'OfficeBuilding', package: 'Present', login: 'Key', online: 'Monitor'
+  platform: 'Platform', company: 'OfficeBuilding', package: 'Present', login: 'Key', online: 'Monitor',
+  notice: 'Notification', job: 'Timer'
 }
 const iconOf = (name) => ICONS[name] || 'Document'
 const pages = (list = []) => list.filter((c) => c.menuType === 'C')
@@ -151,6 +194,7 @@ async function onCommand(cmd) {
     return
   }
   if (cmd === 'logout') {
+    msg.disconnect()
     await store.logout()
     // 动态路由已注册在 router 上，整页刷新是最简单的清理方式
     window.location.href = '/login'
@@ -176,7 +220,19 @@ async function onCommand(cmd) {
 .user { display: flex; align-items: center; gap: 8px; cursor: pointer; outline: none; }
 .main { padding: 16px; }
 .expire-alert { margin-bottom: 12px; }
+.bell { cursor: pointer; color: #555; margin-right: 6px; display: flex; align-items: center; }
+.bell-head, .bell-foot { display: flex; justify-content: space-between; align-items: center; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+.bell-foot { justify-content: center; border-bottom: none; border-top: 1px solid #f0f0f0; padding: 8px 0 0; }
+.bell-empty { color: #999; text-align: center; padding: 24px 0; }
+.bell-item { padding: 10px 4px; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
+.bell-item:hover { background: #f6f8fb; }
+.bell-title { display: flex; gap: 6px; align-items: center; font-size: 14px; color: #1f2329; }
+.bell-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bell-content { color: #666; font-size: 12px; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bell-time { color: #aaa; font-size: 12px; margin-top: 4px; }
 @media (max-width: 768px) {
   .tenant, .name { display: none; }
+  .main { padding: 10px; }
+  .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 </style>

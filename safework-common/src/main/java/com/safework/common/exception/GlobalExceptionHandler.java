@@ -12,6 +12,8 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -80,6 +82,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public R<Void> handleNotFound(NoResourceFoundException e) {
         return R.fail(404, "接口不存在：/" + e.getResourcePath());
+    }
+
+    /**
+     * 消息推送长连接（SSE）到期、浏览器关闭页面导致连接断开：属于正常情况，不记错误日志，
+     * 也不能再往已经断开的连接里写 JSON
+     */
+    @ExceptionHandler({AsyncRequestTimeoutException.class, AsyncRequestNotUsableException.class})
+    public void handleAsyncGone(Exception e) {
+        log.debug("长连接结束：{}", e.getClass().getSimpleName());
     }
 
     @ExceptionHandler(Exception.class)

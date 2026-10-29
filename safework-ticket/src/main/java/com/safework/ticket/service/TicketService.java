@@ -50,6 +50,7 @@ public class TicketService {
     private final UserService userService;
     private final PermissionService permissionService;
     private final SpaceService spaceService;
+    private final TicketNotifier notifier;
 
     // ========================= 查询 =========================
 
@@ -234,7 +235,7 @@ public class TicketService {
         }
     }
 
-    /** 状态流转的唯一入口：校验 → 改状态 → 乐观锁更新 → 记日志 */
+    /** 状态流转的唯一入口：校验 → 改状态 → 乐观锁更新 → 记日志 → 通知相关人员 */
     private void fire(WorkTicket t, TicketAction action, SysUser me, String comment) {
         checkCanFire(t, action);
         TicketStatus from = t.getStatus();
@@ -246,6 +247,7 @@ public class TicketService {
             throw new BizException(409, "作业票已被他人处理，请刷新后重试");
         }
         writeLog(t, action, from, me, comment);
+        notifier.afterFire(t, action, me, comment);
     }
 
     private void checkCanFire(WorkTicket t, TicketAction action) {

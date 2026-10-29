@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { pageTickets } from '@/api'
 import { TICKET_STATUS, TICKET_TYPES } from '@/utils/dict'
@@ -91,6 +91,10 @@ onMounted(() => {
   load()
   if (route.query.create) openCreate()
 })
+// 从消息点进来：/ticket/list?detail=ID 直接打开详情（已经在这个页面时也要响应）
+const openFromQuery = () => { if (route.query.detail) detailRef.value?.open(route.query.detail) }
+onMounted(openFromQuery)
+watch(() => route.query.detail, openFromQuery)
 </script>
 
 <style scoped>

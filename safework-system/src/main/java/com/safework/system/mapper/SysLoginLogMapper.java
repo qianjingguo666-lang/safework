@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
 import com.safework.system.entity.SysLoginLog;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -24,4 +25,9 @@ public interface SysLoginLogMapper extends BaseMapper<SysLoginLog> {
     @InterceptorIgnore(tenantLine = "true")
     @Select("SELECT COUNT(*) FROM sys_login_log WHERE status = #{status} AND login_time >= #{since}")
     long countAllTenantsSince(@Param("status") int status, @Param("since") LocalDateTime since);
+
+    /** 清理任务：删除全部企业很早以前的登录日志 */
+    @InterceptorIgnore(tenantLine = "true")
+    @Delete("DELETE FROM sys_login_log WHERE login_time < #{before}")
+    int deleteBefore(@Param("before") LocalDateTime before);
 }

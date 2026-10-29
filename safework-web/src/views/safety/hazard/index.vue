@@ -76,12 +76,14 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { pageHazards, reportHazard, spaceOptions } from '@/api'
 import { HAZARD_CATEGORIES, HAZARD_LEVELS, HAZARD_STATUS } from '@/utils/dict'
 import HazardDetail from './HazardDetail.vue'
 
+const route = useRoute()
 const loading = ref(false)
 const list = ref([])
 const total = ref(0)
@@ -140,6 +142,10 @@ async function doReport() {
 }
 
 onMounted(load)
+// 从消息点进来：/safety/hazard?detail=ID 直接打开详情
+const openFromQuery = () => { if (route.query.detail) detailRef.value?.open(route.query.detail) }
+onMounted(openFromQuery)
+watch(() => route.query.detail, openFromQuery)
 </script>
 
 <style scoped>

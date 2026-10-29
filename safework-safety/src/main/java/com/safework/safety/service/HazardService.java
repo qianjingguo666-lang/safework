@@ -42,6 +42,7 @@ public class HazardService {
     private final SerialNoGenerator serialNo;
     private final SpaceService spaceService;
     private final UserService userService;
+    private final HazardNotifier notifier;
 
     /** 数据权限：处理人（安全员、管理员）看全部；其他人看自己上报的和指派给自己整改的 */
     public Page<Hazard> page(HazardQueryDTO q) {
@@ -100,6 +101,7 @@ public class HazardService {
         h.setStatus(HazardAction.REPORT.getTo());
         hazardMapper.insert(h);
         writeLog(h, HazardAction.REPORT, null, me, null);
+        notifier.afterFire(h, HazardAction.REPORT, me, null);
         return h.getId();
     }
 
@@ -177,6 +179,7 @@ public class HazardService {
             throw new BizException(409, "隐患已被他人处理，请刷新后重试");
         }
         writeLog(h, action, from, me, comment);
+        notifier.afterFire(h, action, me, comment);
     }
 
     private List<HazardAction> availableActions(Hazard h, Long me) {

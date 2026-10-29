@@ -14,6 +14,7 @@
 | 2 | 部门、用户管理完善、操作日志（AOP） | ✅ 完成 |
 | 2 | SaaS 平台端：企业开通、套餐、到期续费、停用 | ✅ 完成 |
 | 2 | 登录安全：图形验证码、失败锁定、登录日志、在线用户强制下线 | ✅ 完成 |
+| 2 | 消息通知（实时推送、待办提醒、通知公告）+ 定时任务（分布式锁、执行记录） | ✅ 完成 |
 | 2 | 文件上传（现场照片、附件）、数据看板 | 下一步 |
 | 3 | AI 知识库问答（RAG，流式输出、引用出处）、作业票 AI 预审 | ✅ 完成 |
 | 4 | Docker 部署（多阶段构建、Nginx 反向代理、一键发布、数据库备份） | ✅ 完成 |
@@ -54,7 +55,8 @@ safework
 ├── test-safety.ps1   受限空间、扫码、隐患闭环自测脚本
 ├── test-system.ps1   部门、用户管理、操作日志自测脚本
 ├── test-ai.ps1       AI 知识库问答、预审、限流自测脚本
-└── test-platform.ps1 平台端（开通企业、套餐）+ 登录安全自测脚本
+├── test-platform.ps1 平台端（开通企业、套餐）+ 登录安全自测脚本
+└── test-message.ps1  消息推送、业务通知、公告、定时任务自测脚本
 ```
 
 采用**模块化单体**：业务按 Maven 模块划分、边界清晰，但只部署一个进程，适合 2 核 4G 的个人服务器。后续需要时可以把 AI 模块单独拆成服务。
@@ -158,6 +160,32 @@ safework
 - **登录日志**：成功、失败都记录 IP、浏览器、操作系统、失败原因；企业看自己的，平台能看全部（排查“我登不上去”、发现撞库）
 - **在线用户**：每个企业一个 Redis Hash 记录会话；接口只返回 token 的 SHA-256 摘要作为会话 ID，**不返回 token 本身**；强制下线后对方下一次请求收到“您已被管理员强制下线”；不能踢自己当前的会话；退出、停用、过期的会话在查询时懒删除
 - **开发 / 生产配置分离**：开发环境（`application-dev.yml`）获取验证码时会把答案一起返回，测试脚本靠它自动登录；生产环境（`SPRING_PROFILES_ACTIVE=prod`）不返回
+
+## 消息通知
+
+- **谁会收到什么**：作业票提交 → 所有有审批权限的人收到待办；批准 → 申请人收到通知、监护人收到“待开工”；驳回 → 申请人收到待办（含原因）。隐患上报 → 安全员（重大隐患是“预警”）；指派 → 整改人；整改完成 → 验收人（不含整改人自己）；闭环 → 上报人。操作人自己不会收到
+- **在状态机里统一发送**：通知写在 `fire()`（状态流转唯一入口）里，不会出现“某个按钮忘了发通知”
+- **和业务同一个事务**：审批失败回滚，“已批准”的消息也不存在；**实时推送放在事务提交之后**（`TransactionSynchronization.afterCommit`），避免用户点开消息看到的还是旧状态
+- **实时推送**：浏览器和后端保持一个 SSE 长连接，新消息右下角弹窗、铃铛红点 +1。选择 SSE 而不是 WebSocket：只需要服务器 → 浏览器单向推送，SSE 就是普通 HTTP，登录校验和 Nginx 配置都和其他接口一样，断线自动重连
+- **多台服务器**：用户的长连接可能在 A 机器，发消息的请求在 B 机器。发送时发布到 **Redis 频道**，每台机器都订阅，只推给连在自己身上的用户
+- **长连接维护**：每 25 秒心跳（防止 Nginx 60 秒断开空闲连接）；30 分钟主动结束让前端重连（清理僵尸连接）；每人最多 5 个连接；被强制下线、被停用时立即断开
+- **通知公告**：企业管理员发布，全员各生成一条消息；可以撤回（消息一起删除）
+- **越权防护**：标记已读的条件里带 `user_id`，加上租户插件，别人的、别的企业的消息都改不了
+
+## 定时任务
+
+| 任务 | 时间 | 做什么 |
+|---|---|---|
+| 隐患整改期限检查 | 每天 8:30 | 已逾期：每天提醒整改人和安全员；24 小时内到期：提醒整改人 |
+| 作业票超时检查 | 每 30 分钟 | 作业中但超过计划结束时间（人可能还在受限空间里）、已批准但过期未开工 |
+| 企业到期提醒 | 每天 9:00 | 到期前 30 / 7 / 3 / 1 天提醒企业管理员，并给平台发汇总 |
+| 过期数据清理 | 每天 3:00 | 删除过期的登录日志、已读消息、任务执行记录 |
+
+- **框架**：实现 `ScheduledJob` 接口就自动注册调度、出现在平台的【定时任务】页面（可以手动执行、看执行记录）
+- **定时任务没有租户上下文**：没有 Web 请求，`TenantContext` 是空的，直接查业务表会被租户插件拒绝。所以按企业逐个 `runAs` 执行，某个企业出错不影响其他企业
+- **分布式锁**：多台服务器同时到点，Redis `SET NX EX` 抢锁，只有一台执行；释放锁用 Lua 脚本“先比较再删除”，防止任务执行超过锁时间后误删别人的锁
+- **提醒去重**：同一条隐患同一天只提醒一次（Redis 记录），手动多执行几次也不会重复发
+- **独立线程池**：调度器默认只有一个线程，一个任务卡住会拖住所有任务（包括消息心跳），所以单独配置了 4 个线程
 
 ## AI 助手
 
@@ -264,6 +292,11 @@ notepad config\secret.yml
 | GET / POST / DELETE | /ai/knowledge/page、/upload、/{id} | 知识库文档 | ai:knowledge:* |
 | POST | /ai/knowledge/{id}/embed | 为文档生成向量 | ai:knowledge:upload |
 | POST | /ai/ticket/{id}/review | 作业票 AI 预审 | ai:ticket:review |
+| GET | /message/stream | 消息实时推送（SSE：unread、message） | 登录即可 |
+| GET | /message/page、/unread、/latest | 我的消息 / 未读数 / 最近未读 | 登录即可 |
+| PUT | /message/{id}/read、/message/read-all | 标记已读 | 登录即可 |
+| GET / POST / DELETE | /system/notice/page、/system/notice、/{id} | 通知公告 列表 / 发布 / 撤回 | system:notice:list、add |
+| GET / POST | /platform/job/list、/log/page、/{code}/run | 定时任务 / 执行记录 / 立即执行 | platform:job:list、run |
 | GET | /actuator/health | 健康检查 | 否 |
 
 请求头：`Authorization: Bearer <token>`；时间格式：`yyyy-MM-dd HH:mm:ss`
@@ -290,7 +323,8 @@ docker compose up -d
 
 # 2. 后端（窗口 1）
 mvn clean package -DskipTests
-java -jar safework-server\target\safework-server.jar
+# 显式指定开发环境：电脑上如果设置了全局环境变量 SPRING_PROFILES_ACTIVE（别的项目留下的），会覆盖默认的 dev
+java -jar safework-server\target\safework-server.jar --spring.profiles.active=dev
 
 # 3. 前端（窗口 2），浏览器打开 http://localhost:5173
 cd safework-web
@@ -304,11 +338,15 @@ powershell -ExecutionPolicy Bypass -File .\test-safety.ps1
 powershell -ExecutionPolicy Bypass -File .\test-system.ps1
 powershell -ExecutionPolicy Bypass -File .\test-ai.ps1
 powershell -ExecutionPolicy Bypass -File .\test-platform.ps1
+powershell -ExecutionPolicy Bypass -File .\test-message.ps1
 ```
 
 已有数据库升级（保留原有数据）：
 
 ```powershell
+# 按版本顺序执行，每个文件只执行一次
 docker cp sql\upgrade\v2-platform-security.sql safework-mysql:/tmp/v2.sql
 docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v2.sql"
+docker cp sql\upgrade\v3-message-job.sql safework-mysql:/tmp/v3.sql
+docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v3.sql"
 ```

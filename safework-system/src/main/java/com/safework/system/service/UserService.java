@@ -16,6 +16,7 @@ import com.safework.system.entity.SysUserRole;
 import com.safework.system.mapper.SysRoleMapper;
 import com.safework.system.mapper.SysUserMapper;
 import com.safework.system.mapper.SysUserRoleMapper;
+import com.safework.system.message.MessagePushService;
 import com.safework.system.security.LoginGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +41,8 @@ public class UserService {
     private final DeptService deptService;
     private final TenantCache tenantCache;
     private final LoginGuard loginGuard;
+    private final PermissionService permissionService;
+    private final MessagePushService pushService;
 
     /**
      * 分页查询：SQL 里不用写 tenant_id，插件会自动加上。
@@ -92,6 +96,30 @@ public class UserService {
 
     public List<SysUser> listByRoleCode(String roleCode) {
         return userMapper.selectByRoleCode(roleCode);
+    }
+
+    /**
+     * 当前企业里拥有某个权限的用户 ID（发待办消息用，如“所有能审批作业票的人”）。
+     * 和登录后的权限计算保持一致：企业管理员拥有套餐内全部权限；套餐里没有这个功能就没有人能收到。
+     */
+    public List<Long> listUserIdsWithPermission(String perm) {
+        Set<Long> available = permissionService.availableMenuIds();
+        boolean inPackage = permissionService.listAllMenus().stream()
+                .anyMatch(m -> perm.equals(m.getPerms()) && available.contains(m.getId()));
+        if (!inPackage) {
+            return List.of();
+        }
+        Set<Long> ids = new LinkedHashSet<>(userMapper.selectIdsByPermission(perm));
+        userMapper.selectByRoleCode(SysRole.ADMIN_CODE).forEach(u -> ids.add(u.getId()));
+        return new ArrayList<>(ids);
+    }
+
+    /** 当前企业所有正常状态的用户 ID（发公告用） */
+    public List<Long> listAllActiveIds() {
+        return userMapper.selectList(Wrappers.<SysUser>lambdaQuery()
+                        .select(SysUser::getId)
+                        .eq(SysUser::getStatus, 1))
+                .stream().map(SysUser::getId).toList();
     }
 
     public SysUser getById(Long id) {
@@ -149,6 +177,7 @@ public class UserService {
         userMapper.updateById(user);
         if (status == 0) {
             StpUtil.logout(id);
+            pushService.disconnect(id);
         }
     }
 

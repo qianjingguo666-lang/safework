@@ -22,7 +22,7 @@ import java.util.Set;
 public class MybatisPlusConfig {
 
     /** 不做租户隔离的表（平台级数据） */
-    private static final Set<String> IGNORE_TABLES = Set.of("sys_tenant", "sys_tenant_package", "sys_menu");
+    private static final Set<String> IGNORE_TABLES = Set.of("sys_tenant", "sys_tenant_package", "sys_menu", "sys_job_log");
 
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {

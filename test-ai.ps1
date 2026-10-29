@@ -1,6 +1,6 @@
 ﻿# AI 模块自测：知识库上传、检索问答（SSE 流式）、拒答、作业票 AI 预审、限流
 # 运行方式（在项目根目录）：powershell -ExecutionPolicy Bypass -File .\test-ai.ps1
-# 不配置大模型 API Key 也能跑：会测试“只检索”的降级模式
+# 不配置大模型 API Key 也能跑：会测试「只检索」的降级模式
 
 $ErrorActionPreference = 'Stop'
 $base = 'http://localhost:8080'
@@ -111,18 +111,18 @@ foreach ($c in $cases) {
     Write-Host "  问：$($c.q)"
     Write-Host "    来源[1]：$(if ($top) { $top.content.Substring(0, [Math]::Min(40, $top.content.Length)) + '…（相关度 ' + $top.score + '）' } else { '无' })" -ForegroundColor DarkGray
     Write-Host "    答：$($a.answer.Substring(0, [Math]::Min(80, $a.answer.Length)))" -ForegroundColor DarkGray
-    Check "检索到包含“$($c.expect)”的条款" (@($a.sources | Where-Object { $_.content.Contains($c.expect) }).Count -ge 1)
+    Check "检索到包含「$($c.expect)」的条款" (@($a.sources | Where-Object { $_.content.Contains($c.expect) }).Count -ge 1)
 }
 
 Title '4. 拒答：知识库里没有的问题不胡编'
 $a = Ask '年假怎么申请？' $tLisi
 Write-Host "  答：$($a.answer)" -ForegroundColor DarkGray
-Check '没有检索到来源，回答“没有找到”' ($a.sources.Count -eq 0 -and $a.answer.Contains('没有找到'))
+Check '没有检索到来源，回答「没有找到」' ($a.sources.Count -eq 0 -and $a.answer.Contains('没有找到'))
 
 Title '5. 多轮追问：带上历史再检索'
 $history = @(@{ role = 'user'; content = '受限空间作业气体检测有什么要求？' }, @{ role = 'assistant'; content = '……' })
 $a = Ask '中断以后呢？' $tLisi $history
-Check '追问“中断以后呢”能找到“中断超过 30 分钟重新检测”' (@($a.sources | Where-Object { $_.content.Contains('中断') }).Count -ge 1)
+Check '追问「中断以后呢」能找到「中断超过 30 分钟重新检测」' (@($a.sources | Where-Object { $_.content.Contains('中断') }).Count -ge 1)
 
 Title '6. 租户隔离：别的企业检索不到这份文档'
 $a = Ask '氧含量多少才合格？' $tTest
