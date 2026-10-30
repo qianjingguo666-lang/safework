@@ -82,6 +82,9 @@ export const changeSpaceStatus = (id, status) => request.put(`/safety/space/${id
 export const getSpaceQrToken = (id) => request.get(`/safety/space/${id}/qr-token`)
 export const resetSpaceQrToken = (id) => request.post(`/safety/space/${id}/qr-token/reset`)
 export const scanSpace = (token) => request.get(`/public/space/${token}`)
+// 作业票打印（A4 票面 + 签名 + 验真二维码）、扫纸质票上的二维码验真（不用登录）
+export const printTicket = (id) => request.get(`/ticket/${id}/print`)
+export const verifyTicket = (token) => request.get(`/public/ticket/${token}`)
 
 // ---------- 隐患 ----------
 export const pageHazards = (params) => request.get('/safety/hazard/page', { params })

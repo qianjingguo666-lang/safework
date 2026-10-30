@@ -13,6 +13,10 @@ const routes = [
   { path: '/login', component: () => import('@/views/login/index.vue'), meta: { title: '登录' } },
   // 扫码页：现场人员不登录也能看
   { path: '/scan/:token', component: () => import('@/views/scan/index.vue'), meta: { title: '受限空间', public: true } },
+  // 扫纸质作业票上的二维码验真：不登录也能看
+  { path: '/verify/ticket/:token', component: () => import('@/views/verify/index.vue'), meta: { title: '作业票验真', public: true } },
+  // 打印页：要登录，但不放在布局里（没有菜单、顶栏，只有 A4 票面）
+  { path: '/ticket/print/:id', component: () => import('@/views/ticket/print/index.vue'), meta: { title: '打印作业票' } },
   {
     path: '/',
     name: 'Layout',

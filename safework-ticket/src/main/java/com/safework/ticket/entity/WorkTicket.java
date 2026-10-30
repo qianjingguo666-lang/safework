@@ -64,6 +64,10 @@ public class WorkTicket extends BaseEntity {
     @JsonIgnore
     private String flowSnapshot;
 
+    /** 纸质作业票上二维码的验真码，第一次打印时生成 */
+    @JsonIgnore
+    private String verifyToken;
+
     /** 乐观锁版本号：两个人同时审批时，只有一个能成功 */
     @Version
     private Integer version;

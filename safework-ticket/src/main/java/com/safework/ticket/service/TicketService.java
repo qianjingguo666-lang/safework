@@ -21,6 +21,8 @@ import com.safework.ticket.enums.TicketStatus;
 import com.safework.ticket.enums.TicketType;
 import com.safework.ticket.mapper.WorkTicketLogMapper;
 import com.safework.ticket.mapper.WorkTicketMapper;
+import com.safework.ticket.sign.SignatureImage;
+import com.safework.ticket.sign.SignatureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +55,7 @@ public class TicketService {
     private final SpaceService spaceService;
     private final TicketNotifier notifier;
     private final ApprovalService approvalService;
+    private final SignatureService signatureService;
 
     // ========================= 查询 =========================
 
@@ -93,6 +96,7 @@ public class TicketService {
                 .eq(WorkTicketLog::getTicketId, id)
                 .orderByAsc(WorkTicketLog::getCreateTime)
                 .orderByAsc(WorkTicketLog::getId));
+        signatureService.attach(id, logs);
         t.setCurrentStep(approvalService.currentStep(t));
         return new TicketDetailVO(t, logs, availableActions(t, me), approvalService.progress(t));
     }
@@ -132,7 +136,8 @@ public class TicketService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void submit(Long id) {
+    public void submit(Long id, TicketActionDTO dto) {
+        SignatureImage.Checked sign = signatureService.check(dto.getSignature());
         SysUser me = currentUser();
         WorkTicket t = load(id);
         requireApplicant(t, me);
@@ -148,18 +153,19 @@ public class TicketService {
         }
         // 按当前的审批流程配置开始新的一轮：保存流程快照，激活第 1 个节点
         approvalService.prepare(t);
-        fire(t, TicketAction.SUBMIT, me, null);
+        fire(t, TicketAction.SUBMIT, me, null, sign);
         approvalService.activate(t, me);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void cancel(Long id, TicketActionDTO dto) {
+        SignatureImage.Checked sign = signatureService.check(dto.getSignature());
         SysUser me = currentUser();
         WorkTicket t = load(id);
         requireApplicant(t, me);
         checkCanFire(t, TicketAction.CANCEL);
         approvalService.cancelAll(t);
-        fire(t, TicketAction.CANCEL, me, dto.getComment());
+        fire(t, TicketAction.CANCEL, me, dto.getComment(), sign);
     }
 
     // ========================= 审批人操作 =========================
@@ -170,6 +176,7 @@ public class TicketService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void approve(Long id, TicketActionDTO dto) {
+        SignatureImage.Checked sign = signatureService.check(dto.getSignature());
         SysUser me = currentUser();
         WorkTicket t = lock(id);
         requireNotApplicant(t, me);
@@ -179,13 +186,13 @@ public class TicketService {
         String comment = withStep(step, dto.getComment());
         if (decision != ApprovalService.Decision.FINISHED) {
             // 中间节点通过（或会签还有人没审批）：作业票状态不变，只记一条审批记录
-            writeLog(t, TicketAction.APPROVE, t.getStatus(), me, comment);
+            writeLog(t, TicketAction.APPROVE, t.getStatus(), me, comment, sign);
             return;
         }
         checkSpaceConflict(t);
         t.setApproverId(me.getId());
         t.setApproverName(me.getNickname());
-        fire(t, TicketAction.APPROVE, me, comment);
+        fire(t, TicketAction.APPROVE, me, comment, sign);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -193,6 +200,7 @@ public class TicketService {
         if (!StringUtils.hasText(dto.getComment())) {
             throw new BizException("驳回必须填写原因");
         }
+        SignatureImage.Checked sign = signatureService.check(dto.getSignature());
         SysUser me = currentUser();
         WorkTicket t = lock(id);
         requireNotApplicant(t, me);
@@ -201,7 +209,7 @@ public class TicketService {
         approvalService.reject(t, me, dto.getComment());
         t.setApproverId(me.getId());
         t.setApproverName(me.getNickname());
-        fire(t, TicketAction.REJECT, me, withStep(step, dto.getComment()));
+        fire(t, TicketAction.REJECT, me, withStep(step, dto.getComment()), sign);
     }
 
     /** 多级审批时，审批意见前面加上节点名称，例如“【安全员审核（1/2）】同意” */
@@ -216,6 +224,7 @@ public class TicketService {
 
     @Transactional(rollbackFor = Exception.class)
     public void start(Long id, TicketActionDTO dto) {
+        SignatureImage.Checked sign = signatureService.check(dto.getSignature());
         SysUser me = currentUser();
         WorkTicket t = load(id);
         requireGuardian(t, me);
@@ -235,16 +244,17 @@ public class TicketService {
             GasChecker.checkFresh(t);
         }
         t.setActualStartTime(now);
-        fire(t, TicketAction.START, me, dto.getComment());
+        fire(t, TicketAction.START, me, dto.getComment(), sign);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void complete(Long id, TicketActionDTO dto) {
+        SignatureImage.Checked sign = signatureService.check(dto.getSignature());
         SysUser me = currentUser();
         WorkTicket t = load(id);
         requireGuardian(t, me);
         t.setActualEndTime(LocalDateTime.now());
-        fire(t, TicketAction.COMPLETE, me, dto.getComment());
+        fire(t, TicketAction.COMPLETE, me, dto.getComment(), sign);
     }
 
     // ========================= 内部方法 =========================
@@ -273,6 +283,10 @@ public class TicketService {
 
     /** 状态流转的唯一入口：校验 → 改状态 → 乐观锁更新 → 记日志 → 通知相关人员 */
     private void fire(WorkTicket t, TicketAction action, SysUser me, String comment) {
+        fire(t, action, me, comment, null);
+    }
+
+    private void fire(WorkTicket t, TicketAction action, SysUser me, String comment, SignatureImage.Checked sign) {
         checkCanFire(t, action);
         TicketStatus from = t.getStatus();
         if (action.getTo() != null) {
@@ -282,7 +296,7 @@ public class TicketService {
         if (rows == 0) {
             throw new BizException(409, "作业票已被他人处理，请刷新后重试");
         }
-        writeLog(t, action, from, me, comment);
+        writeLog(t, action, from, me, comment, sign);
         notifier.afterFire(t, action, me, comment);
     }
 
@@ -390,6 +404,11 @@ public class TicketService {
     }
 
     private void writeLog(WorkTicket t, TicketAction action, TicketStatus from, SysUser me, String comment) {
+        writeLog(t, action, from, me, comment, null);
+    }
+
+    /** 写操作记录；带了手写签名的，签名和记录在同一个事务里保存 */
+    private void writeLog(WorkTicket t, TicketAction action, TicketStatus from, SysUser me, String comment, SignatureImage.Checked sign) {
         WorkTicketLog log = new WorkTicketLog();
         log.setTicketId(t.getId());
         log.setAction(action);
@@ -399,5 +418,6 @@ public class TicketService {
         log.setOperatorName(me.getNickname());
         log.setComment(comment);
         logMapper.insert(log);
+        signatureService.save(log, me, sign);
     }
 }

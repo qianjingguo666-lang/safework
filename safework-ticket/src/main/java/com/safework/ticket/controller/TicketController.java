@@ -13,10 +13,13 @@ import com.safework.ticket.dto.TicketQueryDTO;
 import com.safework.ticket.dto.TicketSaveDTO;
 import com.safework.ticket.entity.WorkTicket;
 import com.safework.ticket.excel.TicketExcelService;
+import com.safework.ticket.print.TicketPrintService;
+import com.safework.ticket.print.TicketPrintVO;
 import com.safework.ticket.service.TicketService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,6 +42,7 @@ public class TicketController {
 
     private final TicketService ticketService;
     private final TicketExcelService excelService;
+    private final TicketPrintService printService;
 
     /** 导出作业票台账（筛选条件、数据权限和列表一致） */
     @SaCheckPermission("ticket:export")
@@ -70,6 +74,14 @@ public class TicketController {
         return R.ok(ticketService.detail(id));
     }
 
+    @OperLog(module = "作业票", action = "打印")
+    @SaCheckPermission("ticket:list")
+    @Operation(summary = "打印数据：详情 + 每一步的手写签名 + 验真二维码（第一次打印时生成验真码）")
+    @GetMapping("/{id}/print")
+    public R<TicketPrintVO> print(@PathVariable Long id) {
+        return R.ok(printService.print(id));
+    }
+
     @OperLog(module = "作业票", action = "新建")
     @SaCheckPermission("ticket:add")
     @Operation(summary = "新建")
@@ -89,10 +101,23 @@ public class TicketController {
 
     @OperLog(module = "作业票", action = "提交审批")
     @SaCheckPermission("ticket:add")
-    @Operation(summary = "提交审批")
+    @Operation(summary = "提交审批（可以带申请人的手写签名）")
+    @PostMapping(value = "/{id}/submit", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public R<Void> submit(@PathVariable Long id, @RequestBody TicketActionDTO dto) {
+        ticketService.submit(id, orEmpty(dto));
+        return R.ok();
+    }
+
+    /**
+     * 不带 JSON 请求体的提交（旧版本客户端、脚本）。以前提交接口没有请求体，
+     * 有的客户端 POST 时会带上 application/x-www-form-urlencoded，只保留上面那个接口会返回 415。
+     */
+    @OperLog(module = "作业票", action = "提交审批")
+    @SaCheckPermission("ticket:add")
+    @Operation(summary = "提交审批（不带请求体，兼容旧客户端）")
     @PostMapping("/{id}/submit")
-    public R<Void> submit(@PathVariable Long id) {
-        ticketService.submit(id);
+    public R<Void> submitWithoutBody(@PathVariable Long id) {
+        ticketService.submit(id, new TicketActionDTO());
         return R.ok();
     }
 

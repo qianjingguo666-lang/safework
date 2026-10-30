@@ -11,4 +11,6 @@ public class TicketActionDTO {
     private BigDecimal gasOxygen;
     private BigDecimal gasLel;
     private BigDecimal gasH2s;
+    /** 手写签名（PNG 的 data URL），可选 */
+    private String signature;
 }

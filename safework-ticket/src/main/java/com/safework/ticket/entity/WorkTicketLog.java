@@ -24,6 +24,9 @@ public class WorkTicketLog {
     private Long operatorId;
     private String operatorName;
     private String comment;
+    /** 这一步的手写签名（PNG data URL），没签为 null；不是表字段，查询详情时填充 */
+    @TableField(exist = false)
+    private String signImage;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }

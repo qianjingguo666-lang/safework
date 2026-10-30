@@ -4,6 +4,8 @@
       <div class="head">
         <el-tag :type="TICKET_STATUS[t.status]?.type" size="large">{{ TICKET_STATUS[t.status]?.label }}</el-tag>
         <span class="type">{{ TICKET_TYPES[t.ticketType]?.label }}</span>
+        <div class="spacer" />
+        <el-button v-if="t.status !== 'DRAFT'" icon="Printer" size="small" @click="printIt">打印</el-button>
       </div>
 
       <div v-if="actions.length || canReview" class="actions">
@@ -98,12 +100,13 @@
             {{ TICKET_STATUS[l.fromStatus]?.label || '' }} → {{ TICKET_STATUS[l.toStatus]?.label }}
           </span>
           <div v-if="l.comment" class="comment">{{ l.comment }}</div>
+          <img v-if="l.signImage" :src="l.signImage" class="sign-img" alt="手写签名">
         </el-timeline-item>
       </el-timeline>
     </div>
 
     <!-- 开工：监护人现场复测气体 -->
-    <el-dialog v-model="startVisible" title="开始作业" width="420px" append-to-body>
+    <el-dialog v-model="startVisible" title="开始作业" width="min(460px, 94vw)" append-to-body destroy-on-close>
       <el-alert v-if="gasRequired" type="warning" :closable="false" show-icon
                 title="开工前 30 分钟内必须有合格的气体检测数据，请填写现场复测结果" />
       <el-form label-width="90px" class="start-form">
@@ -113,10 +116,29 @@
           <el-form-item label="硫化氢"><el-input-number v-model="startForm.gasH2s" :precision="2" :step="0.1" /> mg/m³</el-form-item>
         </template>
         <el-form-item label="备注"><el-input v-model="startForm.comment" placeholder="如：安全措施已落实" /></el-form-item>
+        <el-form-item label="监护人签名" required><SignaturePad ref="startPadRef" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="startVisible = false">取消</el-button>
         <el-button type="primary" :loading="busy === 'START'" @click="doStart">确认开工</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 提交、审批、驳回、完工、取消：填写意见 + 手写签名 -->
+    <el-dialog v-model="actVisible" :title="actTitle" width="min(460px, 94vw)" append-to-body destroy-on-close>
+      <el-form label-position="top">
+        <el-form-item v-if="act !== 'SUBMIT'" :label="act === 'REJECT' ? '驳回原因' : '意见'" :required="act === 'REJECT'">
+          <el-input v-model="actComment" type="textarea" :rows="2" maxlength="500"
+                    :placeholder="act === 'APPROVE' ? '如：安全措施到位，同意作业' : act === 'REJECT' ? '请写明需要修改的地方' : '可选'" />
+        </el-form-item>
+        <el-form-item v-if="SIGN_ACTIONS.includes(act)" :label="signLabel" required>
+          <SignaturePad ref="actPadRef" />
+        </el-form-item>
+        <div v-if="SIGN_ACTIONS.includes(act)" class="sign-tip">签名会保存在操作记录里，并打印在纸质作业票上</div>
+      </el-form>
+      <template #footer>
+        <el-button @click="actVisible = false">取消</el-button>
+        <el-button :type="BTN_TYPE[act] || 'primary'" :loading="busy === act" @click="doAct">{{ actButton }}</el-button>
       </template>
     </el-dialog>
   </el-drawer>
@@ -124,9 +146,11 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getTicket, reviewTicket, ticketAction } from '@/api'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
+import SignaturePad from '@/components/SignaturePad.vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { TICKET_ACTIONS, TICKET_STATUS, TICKET_TYPES } from '@/utils/dict'
 
@@ -218,23 +242,59 @@ async function runInner(action) {
     startVisible.value = true
     return
   }
-  if (action === 'SUBMIT' || action === 'COMPLETE') {
-    await ElMessageBox.confirm(`确认${TICKET_ACTIONS[action]}？`, '提示', { type: 'warning' })
-    return call(action, {})
+  openAct(action)
+}
+
+// ---------------- 意见 + 手写签名 ----------------
+// 这些操作要求手写签名：申请人提交、审批人同意、监护人开工和完工
+const SIGN_ACTIONS = ['SUBMIT', 'APPROVE', 'START', 'COMPLETE']
+const SIGN_ROLE = { SUBMIT: '申请人签名', APPROVE: '审批人签名', COMPLETE: '监护人签名' }
+const actVisible = ref(false)
+const act = ref('')
+const actComment = ref('')
+const actPadRef = ref()
+const actTitle = computed(() => (act.value === 'APPROVE' ? btnLabel('APPROVE') : TICKET_ACTIONS[act.value]))
+const actButton = computed(() => (act.value === 'CANCEL' ? '确认取消作业票' : '确认' + (act.value === 'APPROVE' ? '同意' : TICKET_ACTIONS[act.value])))
+const signLabel = computed(() => SIGN_ROLE[act.value] || '签名')
+function openAct(action) {
+  act.value = action
+  actComment.value = ''
+  actVisible.value = true
+}
+async function doAct() {
+  const action = act.value
+  if (action === 'REJECT' && !actComment.value.trim()) {
+    ElMessage.warning('请填写驳回原因')
+    return
   }
-  // APPROVE / REJECT / CANCEL 需要填写意见，驳回必填
-  const required = action === 'REJECT'
-  const { value } = await ElMessageBox.prompt(required ? '请填写驳回原因' : '意见（可选）', TICKET_ACTIONS[action], {
-    inputValidator: (v) => !required || (v && v.trim().length > 0) || '驳回原因不能为空',
-    inputPlaceholder: action === 'APPROVE' ? '如：安全措施到位，同意作业' : ''
-  })
-  return call(action, { comment: value })
+  const data = { comment: actComment.value.trim() || undefined }
+  if (SIGN_ACTIONS.includes(action)) {
+    data.signature = actPadRef.value?.toDataURL()
+    if (!data.signature) {
+      ElMessage.warning('请先手写签名')
+      return
+    }
+  }
+  await call(action, data)
+  actVisible.value = false
+}
+
+// 打印：新窗口打开 A4 票面，浏览器打印或另存为 PDF
+const router = useRouter()
+function printIt() {
+  window.open(router.resolve(`/ticket/print/${t.value.id}`).href, '_blank')
 }
 
 const startVisible = ref(false)
 const startForm = reactive({ gasOxygen: null, gasLel: null, gasH2s: null, comment: '' })
+const startPadRef = ref()
 async function doStart() {
-  await call('START', { ...startForm })
+  const signature = startPadRef.value?.toDataURL()
+  if (!signature) {
+    ElMessage.warning('请监护人手写签名，确认现场安全措施已落实')
+    return
+  }
+  await call('START', { ...startForm, signature })
   startVisible.value = false
 }
 
@@ -243,6 +303,9 @@ defineExpose({ open })
 
 <style scoped>
 .head { display: flex; align-items: center; gap: 12px; }
+.spacer { flex: 1; }
+.sign-img { display: block; max-width: 180px; max-height: 60px; margin-top: 6px; padding: 2px 6px; border: 1px solid #ebeef5; border-radius: 4px; background: #fff; }
+.sign-tip { color: #999; font-size: 12px; margin-top: -8px; }
 .type { color: #666; }
 .approval { margin: 16px 0; padding: 12px 14px; border: 1px solid #e4e8f0; border-radius: 6px; }
 .approval-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
