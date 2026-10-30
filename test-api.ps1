@@ -48,7 +48,7 @@ $r = Call GET '/auth/me' $null $tDemo
 Write-Host "角色 = $($r.data.roles -join ', ')   权限 = $($r.data.permissions -join ', ')"
 Write-Host "菜单 = $((@($r.data.menus) | ForEach-Object { $_.menuName }) -join ', ')"
 Check '企业管理员拥有套餐内全部权限（旗舰版含 AI）' ($r.data.permissions -contains 'system:user:add' -and $r.data.permissions -contains 'ai:chat')
-Check '能看到 4 个顶级菜单（作业、安全、AI、系统）' (@($r.data.menus).Count -eq 4)
+Check '能看到 5 个顶级菜单（看板、作业、安全、AI、系统）' (@($r.data.menus).Count -eq 5)
 Check '不返回密码' (-not $r.data.user.password)
 
 Title '3. 演示化工 zhangsan（安全员）登录'
@@ -110,3 +110,4 @@ Check "错误密码被拒绝（$($r.msg)）" ($r.code -eq 400)
 Write-Host ''
 if ($failed -eq 0) { Write-Host '全部通过，RBAC 权限完成！' -ForegroundColor Green }
 else { Write-Host "有 $failed 项失败，把上面的输出发给 Claude" -ForegroundColor Yellow }
+
