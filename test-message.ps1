@@ -172,7 +172,9 @@ Check '撤回公告后，已发出的消息也删除' ($r.code -eq 200 -and (Msg
 Title '7. 定时任务'
 $jobs = (Call GET '/platform/job/list' $null $tPlat).data
 $jobs | ForEach-Object { Write-Host "  - $($_.code)  $($_.cron)  下次 $($_.nextTime)  $($_.name)" -ForegroundColor DarkGray }
-Check '注册了 4 个任务' (@($jobs).Count -eq 4)
+$expectJobs = @('hazard-deadline', 'ticket-overtime', 'tenant-expire', 'data-cleanup', 'exam-reminder', 'exam-auto-submit', 'risk-check')
+$missing = @($expectJobs | Where-Object { @($jobs.code) -notcontains $_ })
+Check "注册了 $(@($jobs).Count) 个任务（隐患、作业票、到期、清理、考试提醒、考试自动交卷、风险巡检）" ($missing.Count -eq 0 -and @($jobs).Count -eq $expectJobs.Count)
 $r = Call GET '/platform/job/list' $null $tAdmin
 Check '企业管理员不能看定时任务（403）' ($r.code -eq 403)
 $r = Call POST '/platform/job/hazard-deadline/run' @{} $tPlat

@@ -12,4 +12,6 @@ public class TicketQueryDTO {
     private TicketType ticketType;
     /** 按编号、名称、地点模糊搜索 */
     private String keyword;
+    /** true：只看等我审批的 */
+    private Boolean todo;
 }

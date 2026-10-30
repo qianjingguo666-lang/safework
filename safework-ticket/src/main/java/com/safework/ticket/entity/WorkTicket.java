@@ -1,7 +1,10 @@
 package com.safework.ticket.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.safework.common.core.BaseEntity;
 import com.safework.ticket.enums.TicketStatus;
 import com.safework.ticket.enums.TicketType;
@@ -48,6 +51,18 @@ public class WorkTicket extends BaseEntity {
     private LocalDateTime gasCheckTime;
 
     private TicketStatus status;
+
+    /** 第几次提交审批（被驳回后重新提交 +1） */
+    private Integer approvalRound;
+    /** 当前审批到第几个节点（从 0 开始），不在审批中为 null（更新时 null 也要写入数据库） */
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private Integer currentNode;
+    /** 当前审批节点名称（列表显示用） */
+    @TableField(exist = false)
+    private String currentStep;
+    /** 提交时的审批流程快照（JSON）：审批中途修改流程配置，不影响已经提交的票 */
+    @JsonIgnore
+    private String flowSnapshot;
 
     /** 乐观锁版本号：两个人同时审批时，只有一个能成功 */
     @Version

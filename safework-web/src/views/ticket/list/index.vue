@@ -8,6 +8,7 @@
       <el-select v-model="query.status" placeholder="状态" clearable style="width: 130px" @change="search">
         <el-option v-for="(v, k) in TICKET_STATUS" :key="k" :label="v.label" :value="k" />
       </el-select>
+      <el-checkbox v-if="canApprove" v-model="query.todo" @change="search">待我审批</el-checkbox>
       <el-button icon="Search" @click="search">查询</el-button>
       <div class="spacer" />
       <el-button v-perm="'ticket:export'" icon="Download" :loading="exporting" @click="doExport">导出</el-button>
@@ -24,9 +25,10 @@
       <el-table-column prop="applicantName" label="申请人" width="140" />
       <el-table-column prop="guardianName" label="监护人" width="140" />
       <el-table-column prop="planStartTime" label="计划开始" width="170" />
-      <el-table-column label="状态" width="100" fixed="right">
+      <el-table-column label="状态" width="130" fixed="right">
         <template #default="{ row }">
           <el-tag :type="TICKET_STATUS[row.status]?.type" effect="light">{{ TICKET_STATUS[row.status]?.label }}</el-tag>
+          <div v-if="row.status === 'PENDING' && row.currentStep" class="step" :title="row.currentStep">{{ row.currentStep }}</div>
         </template>
       </el-table-column>
     </el-table>
@@ -54,6 +56,7 @@ import { useRoute } from 'vue-router'
 import { downloadFile } from '@/utils/download'
 import { pageTickets } from '@/api'
 import { TICKET_STATUS, TICKET_TYPES } from '@/utils/dict'
+import { useUserStore } from '@/stores/user'
 import TicketForm from './TicketForm.vue'
 import TicketDetail from './TicketDetail.vue'
 
@@ -61,7 +64,9 @@ const route = useRoute()
 const loading = ref(false)
 const list = ref([])
 const total = ref(0)
-const query = reactive({ current: 1, size: 10, keyword: '', ticketType: '', status: route.query.status || '' })
+const canApprove = useUserStore().hasPerm('ticket:approve')
+// todo：待我审批（当前审批节点有我的待办），从消息、首页点进来可以带 ?todo=1
+const query = reactive({ current: 1, size: 10, keyword: '', ticketType: '', status: route.query.status || '', todo: route.query.todo === '1' })
 const formRef = ref()
 const detailRef = ref()
 
@@ -69,7 +74,7 @@ async function load() {
   loading.value = true
   try {
     // 空字符串不传，避免后端把 "" 转枚举失败
-    const params = Object.fromEntries(Object.entries(query).filter(([, v]) => v !== '' && v != null))
+    const params = Object.fromEntries(Object.entries(query).filter(([, v]) => v !== '' && v != null && v !== false))
     const page = await pageTickets(params)
     list.value = page.records
     total.value = page.total
@@ -86,7 +91,7 @@ const exporting = ref(false)
 async function doExport() {
   exporting.value = true
   try {
-    const params = Object.fromEntries(Object.entries(query).filter(([k, v]) => v !== '' && v != null && !['current', 'size'].includes(k)))
+    const params = Object.fromEntries(Object.entries(query).filter(([k, v]) => v !== '' && v != null && v !== false && !['current', 'size'].includes(k)))
     await downloadFile('/ticket/export', params, '作业票台账.xlsx')
   } finally {
     exporting.value = false
@@ -112,4 +117,5 @@ watch(() => route.query.detail, openFromQuery)
 
 <style scoped>
 :deep(.el-table__row) { cursor: pointer; }
+.step { margin-top: 4px; color: #e6a23c; font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

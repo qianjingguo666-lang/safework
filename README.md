@@ -11,6 +11,7 @@
 | 1 | 项目骨架、多租户隔离、登录认证 | ✅ 完成 |
 | 1 | 角色、菜单、按钮级权限（RBAC） | ✅ 完成 |
 | 2 | 作业票、审批流（状态机、乐观锁、数据权限） | ✅ 完成 |
+| 2 | 可配置审批流（按作业类型配置多级节点、或签 / 会签、流程快照、待我审批） | ✅ 完成 |
 | 2 | 前端（Vue3 + Element Plus，动态路由、按钮权限） | ✅ 完成 |
 | 2 | 受限空间台账 + 现场二维码、隐患排查闭环 | ✅ 完成 |
 | 2 | 部门、用户管理完善、操作日志（AOP） | ✅ 完成 |
@@ -69,7 +70,8 @@ safework
 ├── test-file.ps1     附件权限、Excel 导入导出、数据看板自测脚本
 ├── test-agent.ps1    AI 智能体（工具权限、数据权限、租户隔离、写操作人工确认）自测脚本
 ├── test-training.ps1 培训考试（组卷、防作弊、阅卷、补考、统计、AI 出题）自测脚本
-└── test-risk.ps1     风险分级管控（LEC 定级、巡检、转隐患、提醒）自测脚本
+├── test-risk.ps1     风险分级管控（LEC 定级、巡检、转隐患、提醒）自测脚本
+└── test-approval.ps1 可配置审批流（多级、会签、驳回重提、流程快照）自测脚本
 ```
 
 采用**模块化单体**：业务按 Maven 模块划分、边界清晰，但只部署一个进程，适合 2 核 4G 的个人服务器。后续需要时可以把 AI 模块单独拆成服务。
@@ -124,6 +126,28 @@ safework
 - **操作留痕**：每次流转写入 `work_ticket_log`，与状态更新在同一事务中
 - **编号生成**：Redis `INCR` 按 企业 + 类型 + 日期 生成流水号，如 `SX20261028-0001`
 - **前端友好**：详情接口返回当前用户可执行的 `actions`，前端直接据此显示按钮
+
+### 可配置审批流（多级审批、或签 / 会签）
+
+企业管理员在【作业管理 → 审批流程】里按作业类型配置审批节点，例如动火作业：`安全员审核（或签）→ 车间主任 + 安全总监会签`。
+
+```
+提交 ──▶ 激活第 1 个节点（给节点审批人生成待办 + 推送消息）
+同意 ──▶ 节点通过？ ── 否（会签还有人没审批）──▶ 等待
+                 └─ 是 ──▶ 还有下一个节点？── 是 ──▶ 激活下一个节点
+                                         └─ 否 ──▶ 作业票【已批准】
+驳回 ──▶ 任何节点驳回，取消所有待办，作业票【已驳回】，修改后重新提交是新的一轮
+```
+
+- **不改原状态机**：多级审批是“待审批”状态内部的细分（`current_node` 记录审批到第几个节点），已批准 / 已驳回仍然只走 `TicketService.fire()`，对看板、消息、智能体等其他模块透明
+- **节点审批人**：所有有审批权限的人 / 指定角色 / 指定人员，最终都和“有 `ticket:approve` 权限、状态正常”取交集，并排除申请人自己（职责分离不变）
+- **或签 / 会签**：`ticket_approval_task` 给节点的每个审批人一条待办；或签一人同意就通过、其他人的待办自动取消，会签要所有人同意。规则在 `ApprovalRules` 里是纯函数，有单元测试
+- **流程快照**：提交时把流程保存到作业票（`flow_snapshot`），审批中途修改配置不影响已提交的票；驳回后重新提交才按新流程
+- **保存时校验**：最多 5 个节点；会签不能用于“所有有审批权限的人”；角色必须存在；每个节点现在至少有一个人能审批。提交时还会检查每个节点除了申请人还有别人能审批，避免审到一半卡住
+- **并发**：审批时 `SELECT ... FOR UPDATE` 锁住作业票，同一张票的审批串行执行；待办用 `WHERE status = 'PENDING'` 条件更新，同一条待办只能处理一次
+- **兼容升级前的数据**：升级前已经提交、还在待审批的票没有待办，第一次有人审批时按默认流程补上
+- **待我审批**：作业票列表勾选“待我审批”只显示当前节点有我的待办的票；详情页显示每个节点的状态、审批人、意见；不是最后一个节点时按钮显示“同意，进入下一步”
+- **默认流程**：没有配置时就是一个节点、有审批权限的人或签，和以前的行为完全一致。演示数据给演示化工的高处作业配置了两级审批（安全员审核 → 企业负责人审批）
 
 ## 受限空间台账与现场二维码
 
@@ -264,6 +288,7 @@ safework
 | V6 | AI 智能体菜单和权限 |
 | V7 | 安全培训：题库、考试、答卷表，演示题库和考试 |
 | V8 | 风险分级管控：风险点、巡检记录表，演示风险点 |
+| V9 | 可配置审批流：审批流程配置表、审批待办表，作业票增加审批轮次 / 当前节点 / 流程快照，演示高处作业两级审批 |
 
 - 空数据库：从 V1 开始全部执行
 - 以前用 init.sql 建好的库：配置了 `baseline-version: 4`，第一次启动只登记“已经到 V4”，然后执行 V5，**原有数据不动**
@@ -290,7 +315,7 @@ safework
 
 | 模块 | 测试 |
 |---|---|
-| 作业票 | 状态机（不能跳步、终态）、气体检测阈值和 30 分钟时效、看板按天补 0 |
+| 作业票 | 状态机（不能跳步、终态）、气体检测阈值和 30 分钟时效、看板按天补 0；审批流程配置校验、或签 / 会签节点结果 |
 | 隐患 | 闭环状态机（验收不通过退回整改） |
 | 登录安全 | 失败 5 次锁定、用户名大小写、企业隔离；验证码一次性、生产环境不返回答案 |
 | 定时任务 | 分布式锁抢占、失败记录日志 |
@@ -462,12 +487,15 @@ notepad config\secret.yml
 | POST | /system/role | 新增角色 | system:role:add |
 | GET/PUT | /system/role/{id}/menus | 查询 / 分配角色菜单 | system:role:menu |
 | GET | /system/menu/tree | 全部菜单树 | system:menu:list |
-| GET | /ticket/page | 作业票分页（status, ticketType, keyword） | ticket:list |
+| GET | /ticket/page | 作业票分页（status, ticketType, keyword, todo=true 只看待我审批） | ticket:list |
 | GET | /ticket/{id} | 详情 + 操作记录 + 可执行动作 | ticket:list |
 | GET | /ticket/guardians | 本企业监护人列表（新建时下拉选择） | ticket:add |
 | POST / PUT | /ticket、/ticket/{id} | 新建 / 修改（草稿、已驳回） | ticket:add |
 | POST | /ticket/{id}/submit、cancel | 提交审批 / 取消 | ticket:add + 申请人 |
-| POST | /ticket/{id}/approve、reject | 批准 / 驳回 | ticket:approve + 非申请人 |
+| POST | /ticket/{id}/approve、reject | 同意 / 驳回（多级审批时只有当前节点的审批人可以操作） | ticket:approve + 当前节点审批人 |
+| GET | /ticket/flow | 三种作业类型的审批流程（含每个节点现在的审批人） | ticket:flow:edit |
+| GET | /ticket/flow/candidates | 可以设为审批人的员工 | ticket:flow:edit |
+| PUT / DELETE | /ticket/flow/{type} | 保存流程 / 恢复默认 | ticket:flow:edit |
 | POST | /ticket/{id}/start、complete | 开工 / 完工 | 指定监护人 |
 | GET / POST / PUT / DELETE | /system/dept/tree、/system/dept | 部门树 / 增 / 改 / 删 | system:dept:* |
 | PUT | /system/user/{id}、/{id}/status、/{id}/password | 修改 / 启停 / 重置密码 | system:user:edit、reset |
@@ -560,6 +588,7 @@ powershell -ExecutionPolicy Bypass -File .\test-file.ps1
 powershell -ExecutionPolicy Bypass -File .\test-agent.ps1
 powershell -ExecutionPolicy Bypass -File .\test-training.ps1
 powershell -ExecutionPolicy Bypass -File .\test-risk.ps1
+powershell -ExecutionPolicy Bypass -File .\test-approval.ps1
 ```
 
 数据库表结构由 Flyway 在后端启动时自动升级，不需要手动执行 SQL。

@@ -29,6 +29,11 @@ export const createTicket = (data) => request.post('/ticket', data)
 export const updateTicket = (id, data) => request.put(`/ticket/${id}`, data)
 /** action: submit / cancel / approve / reject / start / complete */
 export const ticketAction = (id, action, data = {}) => request.post(`/ticket/${id}/${action}`, data)
+// 作业票审批流程
+export const listTicketFlows = () => request.get('/ticket/flow')
+export const ticketFlowCandidates = () => request.get('/ticket/flow/candidates')
+export const saveTicketFlow = (type, nodes) => request.put(`/ticket/flow/${type}`, nodes)
+export const resetTicketFlow = (type) => request.delete(`/ticket/flow/${type}`)
 
 // ---------- 用户（补充） ----------
 export const userOptions = () => request.get('/system/user/options')

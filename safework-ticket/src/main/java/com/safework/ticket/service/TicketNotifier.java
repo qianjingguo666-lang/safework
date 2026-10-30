@@ -30,9 +30,7 @@ public class TicketNotifier {
         String name = t.getTicketNo() + " " + t.getTitle();
         String type = t.getTicketType().getLabel();
         switch (action) {
-            case SUBMIT -> messageService.sendToPermission(TicketService.PERM_APPROVE, me.getId(), draft(t,
-                    MessageCategory.TODO, "待审批：" + name,
-                    t.getApplicantName() + " 提交了" + type + "，作业地点 " + t.getLocation() + "，请审核安全措施和气体检测数据"));
+            // 提交后的“待审批”通知由 ApprovalService 按审批节点发给当前节点的审批人
             case APPROVE -> {
                 send(List.of(t.getApplicantId()), me, draft(t, MessageCategory.NOTICE, "作业票已批准：" + name,
                         withComment(me.getNickname() + " 批准了你的" + type, comment)));

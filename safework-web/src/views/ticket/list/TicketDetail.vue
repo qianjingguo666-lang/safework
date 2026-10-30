@@ -8,9 +8,32 @@
 
       <div v-if="actions.length || canReview" class="actions">
         <el-button v-for="a in actions" :key="a" :type="BTN_TYPE[a] || 'default'" :loading="busy === a" @click="run(a)">
-          {{ TICKET_ACTIONS[a] }}
+          {{ btnLabel(a) }}
         </el-button>
         <el-button v-if="canReview" icon="MagicStick" :loading="reviewing" class="ai-btn" @click="doReview">AI 预审</el-button>
+      </div>
+
+      <div v-if="approval && approval.totalNodes > 1" class="approval">
+        <div class="approval-head">
+          <b>审批进度</b>
+          <span class="muted">共 {{ approval.totalNodes }} 级{{ approval.round > 1 ? `，第 ${approval.round} 次提交` : '' }}</span>
+        </div>
+        <div v-for="n in approval.nodes" :key="n.index" class="a-node" :class="n.status">
+          <div class="dot">{{ NODE_ICON[n.status] || n.index + 1 }}</div>
+          <div class="a-body">
+            <div class="a-title">
+              {{ n.name }}
+              <el-tag size="small" effect="plain" :type="n.mode === 'ALL' ? 'warning' : 'info'">{{ n.mode === 'ALL' ? '会签' : '或签' }}</el-tag>
+              <span class="a-status">{{ NODE_STATUS[n.status] }}</span>
+            </div>
+            <div class="muted">{{ n.approverDesc }}</div>
+            <div v-for="(k, i) in n.tasks.filter((x) => x.status !== 'CANCELLED' || n.mode === 'ALL')" :key="i" class="a-task">
+              <span :class="'t-' + k.status">{{ k.approverName }}　{{ TASK_STATUS[k.status] }}</span>
+              <span v-if="k.decideTime" class="muted">{{ k.decideTime }}</span>
+              <div v-if="k.comment" class="comment">{{ k.comment }}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-if="review" class="review">
@@ -114,6 +137,16 @@ const busy = ref('')
 const t = ref(null)
 const logs = ref([])
 const actions = ref([])
+const approval = ref(null)
+const NODE_STATUS = { WAITING: '未开始', ACTIVE: '审批中', APPROVED: '已通过', REJECTED: '已驳回', CANCELLED: '已终止' }
+const NODE_ICON = { APPROVED: '✓', REJECTED: '✕' }
+const TASK_STATUS = { PENDING: '待审批', APPROVED: '同意', REJECTED: '驳回', CANCELLED: '未审批' }
+// 多级审批：不是最后一个节点时，“同意”是进入下一步
+const btnLabel = (a) => {
+  const p = approval.value
+  if (a === 'APPROVE' && p && p.currentNode != null && p.currentNode < p.totalNodes - 1) return '同意，进入下一步'
+  return TICKET_ACTIONS[a]
+}
 const BTN_TYPE = { SUBMIT: 'primary', APPROVE: 'success', REJECT: 'danger', START: 'warning', COMPLETE: 'success' }
 const gasRequired = computed(() => TICKET_TYPES[t.value?.ticketType]?.gas)
 const fmt = (v, unit) => (v == null ? '-' : `${v} ${unit}`)
@@ -145,6 +178,7 @@ async function open(id) {
     t.value = d.ticket
     logs.value = d.logs
     actions.value = d.actions
+    approval.value = d.approval
   } finally {
     loading.value = false
   }
@@ -152,9 +186,10 @@ async function open(id) {
 
 async function call(action, data) {
   busy.value = action
+  const toNext = btnLabel(action) !== TICKET_ACTIONS[action]
   try {
     await ticketAction(t.value.id, action.toLowerCase(), data)
-    ElMessage.success(`${TICKET_ACTIONS[action]}成功`)
+    ElMessage.success(toNext ? '已同意，进入下一个审批节点' : `${TICKET_ACTIONS[action]}成功`)
     emit('changed')
     await open(t.value.id)
   } finally {
@@ -209,6 +244,28 @@ defineExpose({ open })
 <style scoped>
 .head { display: flex; align-items: center; gap: 12px; }
 .type { color: #666; }
+.approval { margin: 16px 0; padding: 12px 14px; border: 1px solid #e4e8f0; border-radius: 6px; }
+.approval-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.muted { color: #999; font-size: 12px; }
+.a-node { display: flex; gap: 10px; position: relative; padding-bottom: 12px; }
+.a-node:not(:last-child)::before { content: ''; position: absolute; left: 11px; top: 26px; bottom: 2px; border-left: 2px solid #e4e8f0; }
+.a-node:last-child { padding-bottom: 0; }
+.dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: #eef1f6; color: #909399; }
+.ACTIVE .dot { background: #e6a23c; color: #fff; }
+.APPROVED .dot { background: #67c23a; color: #fff; }
+.REJECTED .dot { background: #f56c6c; color: #fff; }
+.a-body { flex: 1; min-width: 0; }
+.a-title { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.a-status { font-weight: normal; font-size: 12px; color: #909399; }
+.ACTIVE .a-status { color: #e6a23c; }
+.APPROVED .a-status { color: #67c23a; }
+.REJECTED .a-status { color: #f56c6c; }
+.a-task { font-size: 13px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.a-task .comment { flex-basis: 100%; }
+.t-APPROVED { color: #67c23a; }
+.t-REJECTED { color: #f56c6c; }
+.t-PENDING { color: #e6a23c; }
+.t-CANCELLED { color: #c0c4cc; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; padding: 12px; background: #f6f8fb; border-radius: 6px; }
 .block { margin-top: 16px; }
 h4 { margin: 20px 0 10px; }

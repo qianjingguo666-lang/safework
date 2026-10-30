@@ -9,6 +9,7 @@ import com.safework.safety.service.SpaceService;
 import com.safework.system.entity.SysUser;
 import com.safework.system.service.PermissionService;
 import com.safework.system.service.UserService;
+import com.safework.ticket.approval.ApprovalService;
 import com.safework.ticket.dto.TicketActionDTO;
 import com.safework.ticket.dto.TicketDetailVO;
 import com.safework.ticket.dto.TicketQueryDTO;
@@ -51,6 +52,7 @@ public class TicketService {
     private final PermissionService permissionService;
     private final SpaceService spaceService;
     private final TicketNotifier notifier;
+    private final ApprovalService approvalService;
 
     // ========================= 查询 =========================
 
@@ -62,7 +64,7 @@ public class TicketService {
         Long me = StpUtil.getLoginIdAsLong();
         boolean viewAll = StpUtil.hasPermission(PERM_APPROVE);
         String kw = q.getKeyword();
-        return ticketMapper.selectPage(new Page<>(q.getCurrent(), q.getSize()), Wrappers.<WorkTicket>lambdaQuery()
+        Page<WorkTicket> page = ticketMapper.selectPage(new Page<>(q.getCurrent(), q.getSize()), Wrappers.<WorkTicket>lambdaQuery()
                 .eq(q.getStatus() != null, WorkTicket::getStatus, q.getStatus())
                 .eq(q.getTicketType() != null, WorkTicket::getTicketType, q.getTicketType())
                 .and(StringUtils.hasText(kw), w -> w
@@ -72,7 +74,11 @@ public class TicketService {
                 .and(!viewAll, w -> w
                         .eq(WorkTicket::getApplicantId, me).or()
                         .eq(WorkTicket::getGuardianId, me))
+                // 待我审批：当前节点有我的待办
+                .inSql(Boolean.TRUE.equals(q.getTodo()), WorkTicket::getId, ApprovalService.myPendingSql(me))
                 .orderByDesc(WorkTicket::getCreateTime));
+        page.getRecords().forEach(t -> t.setCurrentStep(approvalService.currentStep(t)));
+        return page;
     }
 
     public TicketDetailVO detail(Long id) {
@@ -87,7 +93,8 @@ public class TicketService {
                 .eq(WorkTicketLog::getTicketId, id)
                 .orderByAsc(WorkTicketLog::getCreateTime)
                 .orderByAsc(WorkTicketLog::getId));
-        return new TicketDetailVO(t, logs, availableActions(t, me));
+        t.setCurrentStep(approvalService.currentStep(t));
+        return new TicketDetailVO(t, logs, availableActions(t, me), approvalService.progress(t));
     }
 
     /** 当前企业的监护人列表，新建作业票时下拉选择 */
@@ -139,7 +146,10 @@ public class TicketService {
         if (t.getTicketType().isGasRequired()) {
             GasChecker.checkValues(t);
         }
+        // 按当前的审批流程配置开始新的一轮：保存流程快照，激活第 1 个节点
+        approvalService.prepare(t);
         fire(t, TicketAction.SUBMIT, me, null);
+        approvalService.activate(t, me);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -147,20 +157,35 @@ public class TicketService {
         SysUser me = currentUser();
         WorkTicket t = load(id);
         requireApplicant(t, me);
+        checkCanFire(t, TicketAction.CANCEL);
+        approvalService.cancelAll(t);
         fire(t, TicketAction.CANCEL, me, dto.getComment());
     }
 
     // ========================= 审批人操作 =========================
 
+    /**
+     * 同意。多级审批：只有最后一个节点通过时，作业票才变为【已批准】。
+     * 先用 SELECT ... FOR UPDATE 锁住这张票，同一张票的审批串行执行，避免或签节点两人同时同意时推进两次。
+     */
     @Transactional(rollbackFor = Exception.class)
     public void approve(Long id, TicketActionDTO dto) {
         SysUser me = currentUser();
-        WorkTicket t = load(id);
+        WorkTicket t = lock(id);
         requireNotApplicant(t, me);
+        checkCanFire(t, TicketAction.APPROVE);
+        String step = approvalService.currentStep(t);
+        ApprovalService.Decision decision = approvalService.approve(t, me, dto.getComment());
+        String comment = withStep(step, dto.getComment());
+        if (decision != ApprovalService.Decision.FINISHED) {
+            // 中间节点通过（或会签还有人没审批）：作业票状态不变，只记一条审批记录
+            writeLog(t, TicketAction.APPROVE, t.getStatus(), me, comment);
+            return;
+        }
         checkSpaceConflict(t);
         t.setApproverId(me.getId());
         t.setApproverName(me.getNickname());
-        fire(t, TicketAction.APPROVE, me, dto.getComment());
+        fire(t, TicketAction.APPROVE, me, comment);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -169,11 +194,22 @@ public class TicketService {
             throw new BizException("驳回必须填写原因");
         }
         SysUser me = currentUser();
-        WorkTicket t = load(id);
+        WorkTicket t = lock(id);
         requireNotApplicant(t, me);
+        checkCanFire(t, TicketAction.REJECT);
+        String step = approvalService.currentStep(t);
+        approvalService.reject(t, me, dto.getComment());
         t.setApproverId(me.getId());
         t.setApproverName(me.getNickname());
-        fire(t, TicketAction.REJECT, me, dto.getComment());
+        fire(t, TicketAction.REJECT, me, withStep(step, dto.getComment()));
+    }
+
+    /** 多级审批时，审批意见前面加上节点名称，例如“【安全员审核（1/2）】同意” */
+    private static String withStep(String step, String comment) {
+        if (step == null || !step.contains("/")) {
+            return comment;
+        }
+        return "【" + step + "】" + (StringUtils.hasText(comment) ? comment : "同意");
     }
 
     // ========================= 监护人操作 =========================
@@ -269,7 +305,7 @@ public class TicketService {
             }
             boolean allowed = switch (a) {
                 case EDIT, SUBMIT, CANCEL -> isApplicant && canAdd;
-                case APPROVE, REJECT -> canApprove && !isApplicant;
+                case APPROVE, REJECT -> canApprove && !isApplicant && approvalService.isMyTurn(t, me);
                 case START, COMPLETE -> isGuardian;
                 case CREATE -> false;
             };
@@ -314,6 +350,17 @@ public class TicketService {
     private WorkTicket load(Long id) {
         // 租户插件会自动加 tenant_id 条件，别的企业的票查不到
         WorkTicket t = ticketMapper.selectById(id);
+        if (t == null) {
+            throw new BizException(404, "作业票不存在");
+        }
+        return t;
+    }
+
+    /** 加行锁读取（审批用）：同一张票的审批请求排队执行 */
+    private WorkTicket lock(Long id) {
+        WorkTicket t = ticketMapper.selectOne(Wrappers.<WorkTicket>lambdaQuery()
+                .eq(WorkTicket::getId, id)
+                .last("FOR UPDATE"));
         if (t == null) {
             throw new BizException(404, "作业票不存在");
         }
