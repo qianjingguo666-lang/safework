@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -65,5 +67,27 @@ class ToolArgsTest {
         assertEquals("B", s.path("properties").path("status").path("enum").get(1).asText());
         assertEquals(10, s.path("properties").path("limit").path("maximum").asInt());
         assertEquals("status", s.path("required").get(0).asText());
+    }
+
+    @Test
+    @DisplayName("时间：只有日期时取当天 18:00；兼容 T 和斜杠；格式错误给出提示")
+    void dateTime() {
+        assertEquals(LocalDateTime.of(2026, 11, 2, 18, 0), ToolArgs.dateTime("2026-11-02"));
+        assertEquals(LocalDateTime.of(2026, 11, 2, 9, 30), ToolArgs.dateTime("2026-11-02T09:30"));
+        assertEquals(LocalDateTime.of(2026, 11, 2, 9, 30), ToolArgs.dateTime("2026/11/02 09:30:15"));
+        assertNull(ToolArgs.dateTime(" "));
+        assertTrue(assertThrows(IllegalArgumentException.class, () -> ToolArgs.dateTime("下周三")).getMessage().contains("yyyy-MM-dd"));
+    }
+
+    @Test
+    @DisplayName("按姓名找人：精确优先、模糊包含；找不到或有多个都报错并列出候选人，不随便选")
+    void matchOne() {
+        List<String> users = List.of("李四（作业负责人）", "李四光", "张三（安全员）", "赵六");
+        Function<String, String> self = x -> x;
+        assertEquals("赵六", ToolArgs.matchOne(users, self, "赵六", "员工"));
+        assertEquals("张三（安全员）", ToolArgs.matchOne(users, self, "张三", "员工"));
+        IllegalArgumentException many = assertThrows(IllegalArgumentException.class, () -> ToolArgs.matchOne(users, self, "李四", "员工"));
+        assertTrue(many.getMessage().contains("李四（作业负责人）") && many.getMessage().contains("李四光"));
+        assertTrue(assertThrows(IllegalArgumentException.class, () -> ToolArgs.matchOne(users, self, "王五", "员工")).getMessage().contains("没有找到"));
     }
 }

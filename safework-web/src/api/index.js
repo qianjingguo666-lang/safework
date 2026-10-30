@@ -100,6 +100,8 @@ export const embedKnowledge = (id) => request.post(`/ai/knowledge/${id}/embed`, 
 export const removeKnowledge = (id) => request.delete(`/ai/knowledge/${id}`)
 export const pageChatLogs = (params) => request.get('/ai/chat/logs', { params })
 export const agentTools = () => request.get('/ai/agent/tools')
+export const confirmAgentAction = (id) => request.post(`/ai/agent/actions/${id}/confirm`, null, { timeout: 30000 })
+export const cancelAgentAction = (id) => request.post(`/ai/agent/actions/${id}/cancel`)
 export const reviewTicket = (id) => request.post(`/ai/ticket/${id}/review`, null, { timeout: 90000 })
 
 // ---------- 消息、公告、定时任务 ----------

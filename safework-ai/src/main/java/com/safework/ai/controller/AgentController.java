@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.safework.ai.agent.AgentListener;
 import com.safework.ai.agent.AgentResult;
 import com.safework.ai.agent.AgentService;
+import com.safework.ai.agent.action.ActionResultVO;
+import com.safework.ai.agent.action.PendingActionService;
+import com.safework.common.annotation.OperLog;
 import com.safework.ai.dto.AgentToolVO;
 import com.safework.ai.dto.ChatRequest;
 import com.safework.common.core.R;
@@ -17,6 +20,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,6 +40,7 @@ import java.util.Map;
 public class AgentController {
 
     private final AgentService agentService;
+    private final PendingActionService pendingActions;
     private final ObjectMapper json = new ObjectMapper();
 
     @SaCheckPermission("ai:agent")
@@ -53,7 +58,7 @@ public class AgentController {
      * 这样工具执行时登录信息、租户、数据权限都还在。
      */
     @SaCheckPermission("ai:agent")
-    @Operation(summary = "智能体问答（SSE：thinking → tool_start/tool_end… → answer → done）")
+    @Operation(summary = "智能体问答（SSE：thinking → tool_start/tool_end/confirm… → answer → done）")
     @PostMapping("/chat")
     public void chat(@Valid @RequestBody ChatRequest req, HttpServletResponse response) throws IOException {
         // 检查不通过时抛异常，由全局异常处理器以 JSON 返回（此时还没开始写流）
@@ -97,6 +102,11 @@ public class AgentController {
             public void answer(String text) {
                 send(out, "answer", Map.of("t", text));
             }
+
+            @Override
+            public void confirm(Object card) {
+                send(out, "confirm", card);
+            }
         };
 
         try {
@@ -113,6 +123,23 @@ public class AgentController {
                 // 浏览器已经断开
             }
         }
+    }
+
+    /** 用户核对确认卡片后点击【确认执行】：这时才真正修改数据 */
+    @OperLog(module = "AI 智能体", action = "确认执行")
+    @SaCheckPermission("ai:agent")
+    @Operation(summary = "确认执行智能体生成的操作")
+    @PostMapping("/actions/{id}/confirm")
+    public R<ActionResultVO> confirm(@PathVariable String id) {
+        return R.ok(pendingActions.confirm(id));
+    }
+
+    @SaCheckPermission("ai:agent")
+    @Operation(summary = "取消智能体生成的操作")
+    @PostMapping("/actions/{id}/cancel")
+    public R<Void> cancel(@PathVariable String id) {
+        pendingActions.cancel(id);
+        return R.ok();
     }
 
     private void send(ServletOutputStream out, String event, Object data) {

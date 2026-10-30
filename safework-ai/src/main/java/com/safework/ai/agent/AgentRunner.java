@@ -148,6 +148,7 @@ public class AgentRunner {
         String content;
         String summary;
         boolean ok = false;
+        Object card = null;
         String cacheKey = name + "|" + (args == null ? rawArgs : args.toString());
         if (tool == null) {
             summary = "没有这个工具";
@@ -169,7 +170,11 @@ public class AgentRunner {
                 ok = true;
                 summary = r.summary();
                 content = truncate(json.writeValueAsString(r.data()));
-                cache.put(cacheKey, content);
+                card = r.card();
+                // 写操作每次都生成新的确认卡片，不能复用缓存
+                if (card == null) {
+                    cache.put(cacheKey, content);
+                }
             } catch (IllegalArgumentException | BizException e) {
                 summary = e.getMessage();
                 content = error(e.getMessage());
@@ -182,6 +187,9 @@ public class AgentRunner {
         long cost = System.currentTimeMillis() - start;
         steps.add(new AgentResult.Step(name, label, args == null ? rawArgs : args.toString(), ok, summary, cost));
         listener.toolEnd(callId, name, ok, summary, cost);
+        if (card != null) {
+            listener.confirm(card);
+        }
         return content;
     }
 

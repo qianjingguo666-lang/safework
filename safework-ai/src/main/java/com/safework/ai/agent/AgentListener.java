@@ -17,4 +17,8 @@ public interface AgentListener {
 
     default void answer(String text) {
     }
+
+    /** 写操作生成了确认卡片：推送给页面，等用户点击确认 */
+    default void confirm(Object card) {
+    }
 }

@@ -101,6 +101,7 @@ class AgentRunnerTest {
         public void toolStart(String id, String name, String label, JsonNode args) { events.add("start:" + name); }
         public void toolEnd(String id, String name, boolean ok, String summary, long cost) { events.add("end:" + name + ":" + ok); }
         public void answer(String text) { events.add("answer"); }
+        public void confirm(Object card) { events.add("confirm:" + card); }
     };
 
     @BeforeEach
@@ -234,5 +235,25 @@ class AgentRunnerTest {
     void emptyAnswer() {
         model.answer("  ");
         assertTrue(runner(5).run("系统提示", null, "测试", listener).answer().contains("换个问法"));
+    }
+
+    @Test
+    @DisplayName("写操作返回确认卡片：推送 confirm 事件；同样的参数再调用一次会生成新卡片（不走缓存）")
+    void actionCard() {
+        AtomicInteger cards = new AtomicInteger();
+        AgentTool action = new FakeTool("assign_hazard", "safety:hazard:list") {
+            @Override
+            public ToolResult execute(JsonNode args) {
+                runs.incrementAndGet();
+                return new ToolResult(Map.of("status", "WAITING_USER_CONFIRMATION"), "已生成确认卡片", "card-" + cards.incrementAndGet());
+            }
+        };
+        model.call(new String[]{"assign_hazard", "{\"hazardNo\":\"YH1\"}"})
+                .call(new String[]{"assign_hazard", "{\"hazardNo\":\"YH1\"}"})
+                .answer("已生成确认卡片，请核对后点击确认。");
+        new AgentRunner(model, List.of(action), p -> true, 5, 6000).run("系统提示", null, "指派", listener);
+        assertEquals(List.of("thinking:1", "start:assign_hazard", "end:assign_hazard:true", "confirm:card-1",
+                "thinking:2", "start:assign_hazard", "end:assign_hazard:true", "confirm:card-2", "thinking:3", "answer"), events);
+        assertTrue(model.seenMessages.get(1).get(3).path("content").asText().contains("WAITING_USER_CONFIRMATION"));
     }
 }

@@ -2,9 +2,13 @@ package com.safework.ai.agent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -95,5 +99,50 @@ public final class ToolArgs {
 
     private static <E extends Enum<E>> String names(Class<E> type) {
         return Arrays.stream(type.getEnumConstants()).map(Enum::name).collect(Collectors.joining("、"));
+    }
+
+    /**
+     * 解析时间：支持 "2026-11-02 18:00"、"2026-11-02T18:00"、"2026-11-02"（只有日期时取当天 18:00 下班前）
+     */
+    public static LocalDateTime dateTime(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        String t = s.trim().replace('T', ' ').replace('/', '-');
+        try {
+            if (t.length() <= 10) {
+                return LocalDate.parse(t).atTime(18, 0);
+            }
+            return LocalDateTime.parse(t.length() > 16 ? t.substring(0, 16) : t, TIME);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("时间格式不对：" + s + "，请用 yyyy-MM-dd HH:mm 格式");
+        }
+    }
+
+    /**
+     * 按名字找唯一的一个：先精确匹配，再找包含这个名字的（“李四”能匹配“李四（作业负责人）”）。
+     * 找不到或找到多个都抛异常，把候选人告诉模型，让它向用户确认，绝不随便选一个。
+     */
+    public static <T> T matchOne(List<T> items, Function<T, String> nameOf, String query, String what) {
+        if (query == null || query.isBlank()) {
+            throw new IllegalArgumentException("请提供" + what + "的姓名");
+        }
+        String q = query.trim();
+        List<T> exact = items.stream().filter(i -> q.equals(nameOf.apply(i))).toList();
+        if (exact.size() == 1) {
+            return exact.get(0);
+        }
+        List<T> fuzzy = exact.size() > 1 ? exact : items.stream().filter(i -> {
+            String n = nameOf.apply(i);
+            return n != null && n.contains(q);
+        }).toList();
+        if (fuzzy.isEmpty()) {
+            throw new IllegalArgumentException("没有找到名为“" + q + "”的" + what);
+        }
+        if (fuzzy.size() > 1) {
+            String names = String.join("、", fuzzy.stream().limit(10).map(nameOf).toList());
+            throw new IllegalArgumentException("有多个" + what + "匹配“" + q + "”：" + names + "。请向用户确认是哪一位");
+        }
+        return fuzzy.get(0);
     }
 }

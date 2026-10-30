@@ -55,7 +55,7 @@ public class LlmClient {
     /** 指定超时时间：输出很长的任务（例如一次出十几道题）需要更久 */
     public String chat(List<ChatMessage> messages, int timeoutSeconds) {
         try {
-            HttpResponse<String> resp = http.send(chatRequest(messages, false, timeoutSeconds), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = send(chatRequest(messages, false, timeoutSeconds), HttpResponse.BodyHandlers.ofString());
             JsonNode root = parse(resp.statusCode(), resp.body());
             JsonNode content = root.path("choices").path(0).path("message").path("content");
             if (content.isMissingNode()) {
@@ -76,7 +76,7 @@ public class LlmClient {
      */
     public void chatStream(List<ChatMessage> messages, Consumer<String> onDelta) {
         try {
-            HttpResponse<Stream<String>> resp = http.send(chatRequest(messages, true, props.getChat().getTimeoutSeconds()), HttpResponse.BodyHandlers.ofLines());
+            HttpResponse<Stream<String>> resp = send(chatRequest(messages, true, props.getChat().getTimeoutSeconds()), HttpResponse.BodyHandlers.ofLines());
             try (Stream<String> lines = resp.body()) {
                 if (resp.statusCode() / 100 != 2) {
                     String body = lines.collect(Collectors.joining("\n"));
@@ -138,7 +138,7 @@ public class LlmClient {
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))
                     .build();
-            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = send(req, HttpResponse.BodyHandlers.ofString());
             JsonNode root = parse(resp.statusCode(), resp.body());
             JsonNode message = root.path("choices").path(0).path("message");
             if (!message.isObject()) {
@@ -172,7 +172,7 @@ public class LlmClient {
                         .header("Content-Type", "application/json")
                         .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))
                         .build();
-                HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> resp = send(req, HttpResponse.BodyHandlers.ofString());
                 JsonNode data = parse(resp.statusCode(), resp.body()).path("data");
                 float[][] vectors = new float[batch.size()][];
                 for (JsonNode item : data) {
@@ -201,6 +201,33 @@ public class LlmClient {
 
     public float[] embedOne(String text) {
         return embed(List.of(text)).get(0);
+    }
+
+    /** 网络层失败（连接被重置、连接超时）时最多重试的次数 */
+    private static final int MAX_ATTEMPTS = 3;
+
+    /**
+     * 发送请求，遇到网络层的偶发错误自动重试。
+     * <p>
+     * 常见情况：连接池里的连接被对方（或中间的代理、NAT）关闭了，第一次复用时报 “Connection reset”。
+     * 只有拿到响应之前的 IOException 才重试：此时请求还没被处理，重发是安全的；
+     * 大模型返回了 4xx/5xx 不重试（参数错误、余额不足重试也没用），流式回答开始输出后也不会重试。
+     */
+    private <T> HttpResponse<T> send(HttpRequest req, HttpResponse.BodyHandler<T> handler) throws IOException, InterruptedException {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return http.send(req, handler);
+            } catch (java.net.http.HttpTimeoutException e) {
+                // 读超时说明模型已经在处理了，重试会重复计费，直接失败
+                throw e;
+            } catch (IOException e) {
+                if (attempt >= MAX_ATTEMPTS) {
+                    throw e;
+                }
+                log.warn("调用大模型网络异常（{}），第 {} 次重试", e.getMessage(), attempt);
+                Thread.sleep(300L * attempt);
+            }
+        }
     }
 
     private HttpRequest chatRequest(List<ChatMessage> messages, boolean stream, int timeoutSeconds) throws IOException {

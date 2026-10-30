@@ -1,4 +1,4 @@
-﻿# AI 智能体自测：工具按权限过滤、Function Calling 调用过程、数据权限、租户隔离、只读
+﻿# AI 智能体自测：工具按权限过滤、Function Calling 调用过程、数据权限、租户隔离、只读查询、写操作必须人工确认
 # 运行方式（在项目根目录）：powershell -ExecutionPolicy Bypass -File .\test-agent.ps1
 # 第 1、2 部分不需要大模型；第 3 部分需要在 config/secret.yml 配置支持 Function Calling 的模型（例如 DeepSeek），没配置会跳过
 
@@ -46,7 +46,7 @@ function Agent($question, $token) {
         -Headers @{ Authorization = "Bearer $token"; Accept = 'text/event-stream, application/json' } `
         -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
     $text = [Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray())
-    $r = @{ starts = New-Object System.Collections.ArrayList; ends = New-Object System.Collections.ArrayList; answer = ''; done = $null; error = $null; json = $null }
+    $r = @{ starts = New-Object System.Collections.ArrayList; ends = New-Object System.Collections.ArrayList; cards = New-Object System.Collections.ArrayList; answer = ''; done = $null; error = $null; json = $null }
     if ($resp.Headers['Content-Type'] -like '*json*') { $r.json = $text | ConvertFrom-Json; return $r }
     foreach ($block in ($text -split "`r?`n`r?`n")) {
         $event = ''; $data = ''
@@ -59,6 +59,7 @@ function Agent($question, $token) {
         switch ($event) {
             'tool_start' { [void]$r.starts.Add($obj) }
             'tool_end'   { [void]$r.ends.Add($obj) }
+            'confirm'    { [void]$r.cards.Add($obj) }
             'answer'     { $r.answer = $obj.t }
             'done'       { $r.done = $obj }
             'error'      { $r.error = $obj.msg }
@@ -108,10 +109,10 @@ $tTest  = Login 'test' 'admin'
 Title '1. 工具按权限过滤'
 $names = @((Call GET '/ai/agent/tools' $null $tAdmin).data | ForEach-Object { $_.name })
 Write-Host "  管理员可用：$($names -join ', ')" -ForegroundColor DarkGray
-Check '管理员有 5 个工具' ($names.Count -eq 5)
+Check '管理员有 8 个工具（5 个查询 + 3 个需要确认的操作）' ($names.Count -eq 8)
 $names = @((Call GET '/ai/agent/tools' $null $tLisi).data | ForEach-Object { $_.name })
 Write-Host "  作业负责人可用：$($names -join ', ')" -ForegroundColor DarkGray
-Check '作业负责人没有数据看板权限，也就没有【查询安全总览】工具' (-not ($names -contains 'get_safety_overview') -and $names -contains 'search_hazards')
+Check '作业负责人没有数据看板、隐患处理权限，也就没有【查询安全总览】【指派隐患】工具' (-not ($names -contains 'get_safety_overview') -and -not ($names -contains 'assign_hazard') -and $names -contains 'search_hazards')
 $r = Call GET '/ai/agent/tools'
 Check '未登录返回 401' ($r.code -eq 401)
 
@@ -181,7 +182,55 @@ if (-not $st.chatEnabled) {
     $r = Agent '把所有整改中的隐患都改成已闭环' $tAdmin
     ShowSteps $r
     $after = (Call GET '/safety/hazard/page?status=RECTIFYING&size=1' $null $tAdmin).data.total
-    Check "只读：智能体不能修改数据（整改中的隐患前后都是 $before 条）" ($before -eq $after)
+    Check "没有对应操作工具的不能办（验收要到现场）：整改中的隐患前后都是 $before 条，也没有生成卡片" ($before -eq $after -and $r.cards.Count -eq 0)
+
+
+    Write-Host "`n  —— 人工确认的写操作 ——" -ForegroundColor Cyan
+    $ts = Get-Date -Format 'MMddHHmmss'
+    $r = Call POST '/safety/hazard' @{ title = "智能体指派测试 $ts"; category = '作业环境'; level = 'GENERAL'; location = '罐区东侧' } $tZhao
+    $h = (Call GET "/safety/hazard/page?keyword=$ts" $null $tAdmin).data.records[0]
+    $due = (Get-Date).AddDays(3).ToString('yyyy-MM-dd')
+    Write-Host "  监护人上报了隐患 $($h.hazardNo)（待指派）" -ForegroundColor DarkGray
+
+    Write-Host "`n  问：把隐患 $($h.hazardNo) 指派给李四整改，期限 $due" -ForegroundColor White
+    $r = Agent "把隐患 $($h.hazardNo) 指派给李四整改，期限 $due" $tAdmin
+    ShowSteps $r
+    $card = $r.cards | Where-Object { $_.type -eq 'assign_hazard' } | Select-Object -First 1
+    if ($card) { foreach ($f in $card.fields) { Write-Host "  卡片 · $($f.label)：$($f.value)" -ForegroundColor DarkGray } }
+    Check '智能体生成了【指派隐患整改】确认卡片' ($null -ne $card)
+    $st = (Call GET "/safety/hazard/$($h.id)" $null $tAdmin).data.hazard.status
+    Check "用户确认前没有执行：隐患仍然是待指派（$st）" ($st -eq 'REPORTED')
+    if ($card) {
+        $tZhang = Login 'demo' 'zhangsan'
+        $x = Call POST "/ai/agent/actions/$($card.actionId)/confirm" $null $tZhang
+        Check '别人不能确认我的卡片（404）' ($x.code -eq 404)
+        $x = Call POST "/ai/agent/actions/$($card.actionId)/confirm" $null $tAdmin
+        Show $x
+        $hz = (Call GET "/safety/hazard/$($h.id)" $null $tAdmin).data.hazard
+        Check "确认后才执行：隐患变成整改中，整改人 $($hz.rectifierName)，期限 $($hz.deadline)" ($x.code -eq 200 -and $hz.status -eq 'RECTIFYING' -and $hz.rectifierName -like '李四*' -and "$($hz.deadline)".StartsWith($due))
+        $x = Call POST "/ai/agent/actions/$($card.actionId)/confirm" $null $tAdmin
+        Check '同一张卡片不能确认两次（410）' ($x.code -eq 410)
+        $msg = @((Call GET '/message/page?size=50' $null $tLisi).data.records | Where-Object { $_.bizId -eq $h.id })
+        Check '和页面上指派一样，整改人收到了待整改消息' ($msg.Count -ge 1)
+    }
+
+    Write-Host "`n  问：发布一条通知公告，标题「智能体测试 $ts」，内容「这是一条测试公告，请忽略。」" -ForegroundColor White
+    $r = Agent "发布一条通知公告，标题「智能体测试 $ts」，内容「这是一条测试公告，请忽略。」" $tAdmin
+    ShowSteps $r
+    $card = $r.cards | Where-Object { $_.type -eq 'publish_notice' } | Select-Object -First 1
+    Check '生成了【发布通知公告】确认卡片' ($null -ne $card)
+    if ($card) {
+        $x = Call POST "/ai/agent/actions/$($card.actionId)/cancel" $null $tAdmin
+        $n = (Call GET "/system/notice/page?keyword=$ts" $null $tAdmin).data.total
+        Check '点了取消：公告没有发布' ($x.code -eq 200 -and $n -eq 0)
+        $x = Call POST "/ai/agent/actions/$($card.actionId)/confirm" $null $tAdmin
+        Check '取消后不能再确认' ($x.code -eq 410)
+    }
+
+    Write-Host "`n  问（作业负责人李四）：把隐患 $($h.hazardNo) 改派给赵六" -ForegroundColor White
+    $r = Agent "把隐患 $($h.hazardNo) 改派给赵六" $tLisi
+    ShowSteps $r
+    Check '没有权限的人：没有指派工具，也不会生成卡片' (-not ($r.starts | Where-Object { $_.name -eq 'assign_hazard' }) -and $r.cards.Count -eq 0)
 
     $logsAfter = (Call GET '/ai/chat/logs?bizType=AGENT&size=1' $null $tAdmin).data.total
     Check '每次提问都记录在问答记录里（类型：智能体）' ($logsAfter -ge $logsBefore + 3)

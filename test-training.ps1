@@ -240,4 +240,3 @@ if (-not $status.chatEnabled) {
 Write-Host ''
 if ($failed -eq 0) { Write-Host '全部通过' -ForegroundColor Green }
 else { Write-Host "有 $failed 项失败，把上面的输出发给 Claude" -ForegroundColor Red }
-
