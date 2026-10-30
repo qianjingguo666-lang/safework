@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.safework.ai.agent.ModelReply;
 import com.safework.ai.config.AiProperties;
 import com.safework.ai.dto.ChatMessage;
 import com.safework.common.exception.BizException;
@@ -99,6 +100,46 @@ public class LlmClient {
                     }
                 }
             }
+        } catch (IOException e) {
+            throw new BizException(502, "调用大模型失败：" + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BizException(502, "调用大模型被中断");
+        }
+    }
+
+    /**
+     * Function Calling：带上工具定义调用一次（非流式），返回 choices[0].message。
+     * message 里有 tool_calls 表示模型要调用工具，否则 content 就是最终回答。
+     * 需要模型支持 tools 参数（DeepSeek、通义千问、GLM、讯飞星火 Max/4.0 Ultra 等；星火 Lite 不支持）。
+     *
+     * @param tools 传 null 表示不提供工具，要求模型直接回答
+     */
+    public ModelReply chatWithTools(ArrayNode messages, ArrayNode tools) {
+        AiProperties.Chat cfg = props.getChat();
+        ObjectNode body = json.createObjectNode();
+        body.put("model", cfg.getModel());
+        body.put("stream", false);
+        body.put("temperature", cfg.getTemperature());
+        body.set("messages", messages);
+        if (tools != null && !tools.isEmpty()) {
+            body.set("tools", tools);
+            body.put("tool_choice", "auto");
+        }
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create(trimSlash(cfg.getBaseUrl()) + "/chat/completions"))
+                    .timeout(Duration.ofSeconds(cfg.getTimeoutSeconds()))
+                    .header("Authorization", "Bearer " + cfg.getApiKey())
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))
+                    .build();
+            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            JsonNode root = parse(resp.statusCode(), resp.body());
+            JsonNode message = root.path("choices").path(0).path("message");
+            if (!message.isObject()) {
+                throw new BizException(502, "大模型返回格式异常：" + abbreviate(resp.body()));
+            }
+            return new ModelReply((ObjectNode) message, root.path("usage").path("total_tokens").asInt(0));
         } catch (IOException e) {
             throw new BizException(502, "调用大模型失败：" + e.getMessage());
         } catch (InterruptedException e) {

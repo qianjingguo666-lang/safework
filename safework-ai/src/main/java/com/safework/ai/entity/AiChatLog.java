@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class AiChatLog {
     public static final String CHAT = "CHAT";
     public static final String REVIEW = "REVIEW";
+    public static final String AGENT = "AGENT";
 
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;

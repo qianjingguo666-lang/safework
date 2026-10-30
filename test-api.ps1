@@ -110,4 +110,3 @@ Check "错误密码被拒绝（$($r.msg)）" ($r.code -eq 400)
 Write-Host ''
 if ($failed -eq 0) { Write-Host '全部通过，RBAC 权限完成！' -ForegroundColor Green }
 else { Write-Host "有 $failed 项失败，把上面的输出发给 Claude" -ForegroundColor Yellow }
-

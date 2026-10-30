@@ -127,8 +127,9 @@ onBeforeUnmount(stop)
 </script>
 
 <style scoped>
-.chat-page { height: calc(100vh - 56px - 32px); }
-.chat-main { height: 100%; display: flex; flex-direction: column; box-sizing: border-box; padding: 16px; }
+.chat-page { flex: 1 !important; min-height: 420px; display: flex; flex-direction: column; }
+.chat-page > .chat-main { flex: 1; min-height: 0; }
+.chat-main { display: flex; flex-direction: column; box-sizing: border-box; padding: 16px; }
 .tip { margin-bottom: 10px; }
 .messages { flex: 1; overflow-y: auto; padding: 8px 4px; }
 .welcome { text-align: center; padding: 48px 16px; color: #555; }

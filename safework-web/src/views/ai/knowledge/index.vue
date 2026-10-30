@@ -56,7 +56,7 @@
         <el-tab-pane label="问答记录" name="log">
           <div class="toolbar">
             <el-select v-model="logQuery.bizType" placeholder="类型" clearable style="width: 120px" @change="loadLogs">
-              <el-option label="问答" value="CHAT" /><el-option label="作业票预审" value="REVIEW" />
+              <el-option label="问答" value="CHAT" /><el-option label="智能体" value="AGENT" /><el-option label="作业票预审" value="REVIEW" />
             </el-select>
             <el-select v-model="logQuery.hit" placeholder="是否命中" clearable style="width: 160px" @change="loadLogs">
               <el-option label="命中知识库" :value="1" /><el-option label="未命中（需要补充制度）" :value="0" />
@@ -69,13 +69,23 @@
               <template #default="{ row }">
                 <div class="expand">
                   <div><b>回答：</b><span class="pre">{{ row.answer || '-' }}</span></div>
-                  <div><b>引用：</b>{{ row.sources }}</div>
+                  <div v-if="row.bizType === 'AGENT'">
+                    <b>调用过程：</b>
+                    <template v-if="agentTrace(row)">
+                      <span>{{ agentTrace(row).rounds }} 轮，{{ agentTrace(row).tokens }} tokens</span>
+                      <div v-for="(s, i) in agentTrace(row).steps" :key="i" class="step-line">
+                        {{ i + 1 }}. {{ s.tool }}（{{ s.args }}）→ <span :class="{ err: !s.ok }">{{ s.summary }}</span>
+                      </div>
+                    </template>
+                    <span v-else>-</span>
+                  </div>
+                  <div v-else><b>引用：</b>{{ row.sources }}</div>
                   <div v-if="row.errorMsg" class="err"><b>错误：</b>{{ row.errorMsg }}</div>
                 </div>
               </template>
             </el-table-column>
             <el-table-column prop="createTime" label="时间" width="170" />
-            <el-table-column label="类型" width="100"><template #default="{ row }">{{ row.bizType === 'CHAT' ? '问答' : '作业票预审' }}</template></el-table-column>
+            <el-table-column label="类型" width="100"><template #default="{ row }">{{ BIZ_TYPES[row.bizType] || row.bizType }}</template></el-table-column>
             <el-table-column prop="userName" label="提问人" width="140" />
             <el-table-column prop="question" label="问题" min-width="240" show-overflow-tooltip />
             <el-table-column label="命中" width="80">
@@ -174,6 +184,11 @@ async function preview(row) {
 const logLoading = ref(false)
 const logs = ref([])
 const logTotal = ref(0)
+const BIZ_TYPES = { CHAT: '问答', AGENT: '智能体', REVIEW: '作业票预审' }
+// 智能体记录的 sources 是 JSON：{ rounds, tokens, steps: [{ tool, args, ok, summary }] }
+function agentTrace(row) {
+  try { return row.sources ? JSON.parse(row.sources) : null } catch { return null }
+}
 const logQuery = reactive({ current: 1, size: 20, bizType: '', hit: null, keyword: '' })
 async function loadLogs() {
   logLoading.value = true
@@ -203,4 +218,5 @@ onMounted(() => {
 .err { color: #f56c6c; }
 .chunk { border: 1px solid #ebeef5; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; line-height: 1.7; }
 .chunk-head { color: #999; font-size: 12px; margin-bottom: 4px; }
+.step-line { color: #555; margin-left: 12px; }
 </style>

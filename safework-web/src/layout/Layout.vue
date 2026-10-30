@@ -141,7 +141,7 @@ const collapsed = ref(window.innerWidth < 768)
 const ICONS = {
   setting: 'Setting', user: 'User', team: 'UserFilled', menu: 'Menu', safety: 'Warning', file: 'Document',
   shield: 'FirstAidKit', space: 'Box', hazard: 'WarningFilled', dept: 'OfficeBuilding', log: 'Tickets',
-  ai: 'MagicStick', chat: 'ChatDotRound', book: 'Reading',
+  ai: 'MagicStick', chat: 'ChatDotRound', book: 'Reading', agent: 'Cpu',
   platform: 'Platform', company: 'OfficeBuilding', package: 'Present', login: 'Key', online: 'Monitor',
   notice: 'Notification', job: 'Timer', chart: 'DataAnalysis'
 }
@@ -218,7 +218,9 @@ async function onCommand(cmd) {
 .title { font-size: 16px; font-weight: 500; }
 .spacer { flex: 1; }
 .user { display: flex; align-items: center; gap: 8px; cursor: pointer; outline: none; }
-.main { padding: 16px; }
+.main { padding: 16px; display: flex; flex-direction: column; }
+/* 内容区是纵向 flex：问答这类要占满剩余高度的页面用 flex: 1，不用再按横幅、标题栏的高度去算 */
+.main > :deep(*) { flex-shrink: 0; }
 .expire-alert { margin-bottom: 12px; }
 .bell { cursor: pointer; color: #555; margin-right: 6px; display: flex; align-items: center; }
 .bell-head, .bell-foot { display: flex; justify-content: space-between; align-items: center; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }

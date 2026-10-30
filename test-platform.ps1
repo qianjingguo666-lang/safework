@@ -204,4 +204,3 @@ Check '统计数据正常' ($s.tenantTotal -ge 3 -and $s.loginFailToday -ge 6)
 Write-Host ''
 if ($failed -eq 0) { Write-Host '全部通过，SaaS 平台端 + 登录安全完成！' -ForegroundColor Green }
 else { Write-Host "有 $failed 项失败，把上面的输出发给 Claude" -ForegroundColor Yellow }
-
