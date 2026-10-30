@@ -20,6 +20,7 @@
 | 2 | 附件（隐患现场 / 整改照片、作业票附件）、Excel 导入导出、数据看板（ECharts） | ✅ 完成 |
 | 3 | AI 知识库问答（RAG，流式输出、引用出处）、作业票 AI 预审 | ✅ 完成 |
 | 3 | AI 智能体（Function Calling：自主调用查询工具，权限内只读） | ✅ 完成 |
+| 3 | 安全培训考试（题库、随机组卷、自动阅卷、成绩统计）+ AI 根据制度出题 | ✅ 完成 |
 | 4 | Docker 部署（多阶段构建、Nginx 反向代理、一键发布、数据库备份） | ✅ 完成 |
 | 4 | 工程规范：Flyway 数据库版本管理、接口文档、单元测试、traceId 链路日志、GitHub Actions CI | ✅ 完成 |
 | 4 | 域名 + HTTPS | 下一步 |
@@ -44,6 +45,7 @@ safework
 ├── safework-system   系统模块：平台端（企业、套餐）、部门、用户、登录安全、角色、菜单权限、日志
 ├── safework-safety   安全管理模块：受限空间台账、隐患排查治理
 ├── safework-ticket   作业票模块：作业票、审批流状态机、操作记录
+├── safework-training 安全培训模块：题库、随机组卷、在线考试、自动阅卷、成绩统计
 ├── safework-ai       AI 模块：知识库（解析、切分、向量）、混合检索、流式问答、作业票预审
 ├── safework-server   启动模块：配置（租户插件、登录拦截）并打包成可运行 jar
 ├── safework-web      前端：Vue3 + Element Plus
@@ -64,7 +66,8 @@ safework
 ├── test-platform.ps1 平台端（开通企业、套餐）+ 登录安全自测脚本
 ├── test-message.ps1  消息推送、业务通知、公告、定时任务自测脚本
 ├── test-file.ps1     附件权限、Excel 导入导出、数据看板自测脚本
-└── test-agent.ps1    AI 智能体（工具权限、数据权限、租户隔离、只读）自测脚本
+├── test-agent.ps1    AI 智能体（工具权限、数据权限、租户隔离、只读）自测脚本
+└── test-training.ps1 培训考试（组卷、防作弊、阅卷、补考、统计、AI 出题）自测脚本
 ```
 
 采用**模块化单体**：业务按 Maven 模块划分、边界清晰，但只部署一个进程，适合 2 核 4G 的个人服务器。后续需要时可以把 AI 模块单独拆成服务。
@@ -230,6 +233,7 @@ safework
 | V4 | 附件、Excel、看板 |
 | V5 | 操作日志 trace_id、列表查询索引 |
 | V6 | AI 智能体菜单和权限 |
+| V7 | 安全培训：题库、考试、答卷表，演示题库和考试 |
 
 - 空数据库：从 V1 开始全部执行
 - 以前用 init.sql 建好的库：配置了 `baseline-version: 4`，第一次启动只登记“已经到 V4”，然后执行 V5，**原有数据不动**
@@ -262,11 +266,44 @@ safework
 | 定时任务 | 分布式锁抢占、失败记录日志 |
 | 权限 | 套餐菜单的父子完整性 |
 | 附件 | 文件头识别（改扩展名伪装的文件被拒绝） |
-| AI | 文本切分、关键词打分、向量计算、JSON 提取、作业票规则预检；智能体循环（剧本模型）、工具参数校验 |
+| AI | 文本切分、关键词打分、向量计算、JSON 提取、作业票规则预检；智能体循环（剧本模型）、工具参数校验；AI 出题解析（兼容不规范输出）、出题原文选取 |
+| 培训 | 题目校验、多选题阅卷、随机组卷（打乱选项后答案字母正确换算）、题库不足提示 |
 
 ### 持续集成（GitHub Actions）
 
 每次 push 到 GitHub 自动运行：后端 `mvn verify`（编译 + 全部单元测试），前端 `npm ci && npm run build`。结果看仓库的 **Actions** 页面，README 顶部的徽章显示最近一次是否通过。
+
+## 安全培训考试
+
+特殊作业人员必须经过安全培训考试合格才能上岗。题库 → 建考试（组卷规则）→ 员工在线答题 → 自动阅卷 → 成绩统计，AI 可以根据知识库里的制度文件出题。
+
+```
+题库（人工录入 / AI 出题 → 待审核 → 启用）
+   ↓ 按规则随机抽题（单选 N 道 × 分值、多选、判断），选项顺序也随机
+答卷（试卷快照）→ 自动保存答案 → 交卷 / 超时自动交卷 → 阅卷 → 成绩统计、导出
+```
+
+- **防作弊**：每个人、每次抽到的题和选项顺序都不同（打乱选项后正确答案的字母同步换算）；答题时接口只返回题目和选项，**正确答案只存在服务端**
+- **试卷快照**：生成试卷时把题目复制一份存进答卷，之后修改、停用、删除题库里的题，不影响已经生成的试卷和成绩
+- **时间以服务器为准**：每张答卷有交卷截止时间（开始时间 + 时长，且不晚于考试结束时间）；前端用服务器时间校正倒计时；超时 60 秒后提交的答案不再接受；考生关了浏览器，定时任务每 5 分钟把超时的卷按已保存的答案自动交卷
+- **不丢答案**：每改一题就自动保存到服务器，同时在本机暂存一份；刷新页面、换电脑都可以继续答
+- **并发安全**：答卷表唯一索引（考试 + 人 + 第几次）防止连点“开始考试”生成两张卷；交卷用 `WHERE status = '答题中'` 条件更新，考生交卷和自动交卷同时发生时只有一个生效
+- **阅卷规则**：答案标准化后完全一致才得分（多选题少选、多选都不得分）；每人可考次数可配置，取最高分，通过后不能再考
+- **统计**：通过率、平均分、分数段分布（按得分率，满分不是 100 的考试也能比较）、**正确率最低的题**（培训时重点讲解）、未交卷名单，成绩导出 Excel
+- **通知**：发布考试时给参考人员发待办；每天提醒 24 小时内截止、还没通过的人
+- **参考范围**：全体员工或指定部门，选上级部门自动包含下级部门（保存时展开，查询用 `FIND_IN_SET`）
+
+### AI 出题（人在回路）
+
+```
+选择知识库里的制度文件 → 选取原文（有出题重点时按关键词选相关段落，否则全文均匀选取，≤ 6000 字）
+→ 大模型按固定 JSON 格式出题 → 解析 → 逐题校验 + 去重 → 以【待审核】状态入库 → 安全员审核后才能用于考试
+```
+
+- **AI 的输出不可靠，每道题都要校验**：多选题只有一个答案、答案字母超出选项范围、选项重复、判断题答案不是对错……这些题直接跳过并告诉用户原因，不会进入题库
+- **兼容不规范的输出**：JSON 前后有说明文字、题型写成中文、选项带“A.”前缀、答案写成数组或直接写选项内容，`AiQuestionParser` 都能正确解析（有单元测试覆盖）
+- **为什么要人工审核**：考试成绩关系到能不能上岗，AI 出的题哪怕 95% 正确，剩下 5% 也会冤枉人；所以 AI 只负责“起草”，由人决定是否使用
+- 每道题的解析写明制度依据；出题记录保存在问答记录里（类型：AI 出题），可以追溯
 
 ## AI 助手
 
@@ -414,6 +451,11 @@ notepad config\secret.yml
 | GET / POST | /safety/space/export、/import-template、/import | 受限空间 导出 / 模板 / 导入 | safety:space:import |
 | GET | /safety/hazard/export、/ticket/export | 导出隐患、作业票台账 | safety:hazard:export、ticket:export |
 | GET | /dashboard/overview?days=30 | 数据看板 | dashboard:view |
+| GET / POST / PUT | /training/question/page、/training/question、/approve、/remove | 题库 / 新增修改 / 审核 / 删除 | training:question:list、edit |
+| POST | /ai/question/generate | AI 根据制度文件出题（待审核入库） | training:question:ai |
+| GET / POST / PUT | /training/exam/page、/training/exam、/{id}/publish、/{id}/close | 考试管理 | training:exam:list、edit |
+| GET | /training/exam/{id}/stats、/records、/export | 成绩统计、答卷、导出 | training:exam:list |
+| GET / POST / PUT | /training/my/exams、/exams/{id}/start、/record/{id}/answers、/submit、/result | 我的考试：开始、保存、交卷、成绩 | training:my |
 | GET | /actuator/health | 健康检查 | 否 |
 
 完整接口和参数见在线文档：http://localhost:8080/swagger-ui.html（开发环境）
@@ -460,6 +502,7 @@ powershell -ExecutionPolicy Bypass -File .\test-platform.ps1
 powershell -ExecutionPolicy Bypass -File .\test-message.ps1
 powershell -ExecutionPolicy Bypass -File .\test-file.ps1
 powershell -ExecutionPolicy Bypass -File .\test-agent.ps1
+powershell -ExecutionPolicy Bypass -File .\test-training.ps1
 ```
 
 数据库表结构由 Flyway 在后端启动时自动升级，不需要手动执行 SQL。

@@ -49,8 +49,13 @@ public class LlmClient {
 
     /** 一次性返回完整回答 */
     public String chat(List<ChatMessage> messages) {
+        return chat(messages, props.getChat().getTimeoutSeconds());
+    }
+
+    /** 指定超时时间：输出很长的任务（例如一次出十几道题）需要更久 */
+    public String chat(List<ChatMessage> messages, int timeoutSeconds) {
         try {
-            HttpResponse<String> resp = http.send(chatRequest(messages, false), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = http.send(chatRequest(messages, false, timeoutSeconds), HttpResponse.BodyHandlers.ofString());
             JsonNode root = parse(resp.statusCode(), resp.body());
             JsonNode content = root.path("choices").path(0).path("message").path("content");
             if (content.isMissingNode()) {
@@ -71,7 +76,7 @@ public class LlmClient {
      */
     public void chatStream(List<ChatMessage> messages, Consumer<String> onDelta) {
         try {
-            HttpResponse<Stream<String>> resp = http.send(chatRequest(messages, true), HttpResponse.BodyHandlers.ofLines());
+            HttpResponse<Stream<String>> resp = http.send(chatRequest(messages, true, props.getChat().getTimeoutSeconds()), HttpResponse.BodyHandlers.ofLines());
             try (Stream<String> lines = resp.body()) {
                 if (resp.statusCode() / 100 != 2) {
                     String body = lines.collect(Collectors.joining("\n"));
@@ -198,7 +203,7 @@ public class LlmClient {
         return embed(List.of(text)).get(0);
     }
 
-    private HttpRequest chatRequest(List<ChatMessage> messages, boolean stream) throws IOException {
+    private HttpRequest chatRequest(List<ChatMessage> messages, boolean stream, int timeoutSeconds) throws IOException {
         AiProperties.Chat cfg = props.getChat();
         ObjectNode body = json.createObjectNode();
         body.put("model", cfg.getModel());
@@ -209,7 +214,7 @@ public class LlmClient {
             arr.addObject().put("role", m.role()).put("content", m.content());
         }
         return HttpRequest.newBuilder(URI.create(trimSlash(cfg.getBaseUrl()) + "/chat/completions"))
-                .timeout(Duration.ofSeconds(cfg.getTimeoutSeconds()))
+                .timeout(Duration.ofSeconds(timeoutSeconds))
                 .header("Authorization", "Bearer " + cfg.getApiKey())
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))

@@ -16,6 +16,7 @@ public class AiChatLog {
     public static final String CHAT = "CHAT";
     public static final String REVIEW = "REVIEW";
     public static final String AGENT = "AGENT";
+    public static final String QUESTION = "QUESTION";
 
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;

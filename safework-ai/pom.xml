@@ -16,6 +16,10 @@
             <groupId>com.safework</groupId>
             <artifactId>safework-ticket</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.safework</groupId>
+            <artifactId>safework-training</artifactId>
+        </dependency>
         <!-- 解析 PDF 文本 -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>

@@ -143,7 +143,8 @@ const ICONS = {
   shield: 'FirstAidKit', space: 'Box', hazard: 'WarningFilled', dept: 'OfficeBuilding', log: 'Tickets',
   ai: 'MagicStick', chat: 'ChatDotRound', book: 'Reading', agent: 'Cpu',
   platform: 'Platform', company: 'OfficeBuilding', package: 'Present', login: 'Key', online: 'Monitor',
-  notice: 'Notification', job: 'Timer', chart: 'DataAnalysis'
+  notice: 'Notification', job: 'Timer', chart: 'DataAnalysis',
+  training: 'Reading', exam: 'EditPen', question: 'Collection', 'exam-manage': 'Memo'
 }
 const iconOf = (name) => ICONS[name] || 'Document'
 const pages = (list = []) => list.filter((c) => c.menuType === 'C')

@@ -208,7 +208,7 @@ public class KnowledgeService {
         indexCache.remove(TenantContext.get());
     }
 
-    private AiDocument getById(Long id) {
+    public AiDocument getById(Long id) {
         AiDocument doc = documentMapper.selectById(id);
         if (doc == null) {
             throw new BizException(404, "文档不存在");

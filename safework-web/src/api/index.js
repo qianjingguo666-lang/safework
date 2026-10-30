@@ -133,3 +133,33 @@ export const importSpaces = (file) => {
   return request.post('/safety/space/import', form, { timeout: 120000 })
 }
 export const dashboardOverview = (days) => request.get('/dashboard/overview', { params: { days } })
+
+// ---------- 安全培训 ----------
+export const pageQuestions = (params) => request.get('/training/question/page', { params })
+export const questionCategories = () => request.get('/training/question/categories')
+export const createQuestion = (data) => request.post('/training/question', data)
+export const updateQuestion = (id, data) => request.put(`/training/question/${id}`, data)
+export const approveQuestions = (ids) => request.post('/training/question/approve', { ids })
+export const removeQuestions = (ids) => request.post('/training/question/remove', { ids })
+export const changeQuestionStatus = (id, status) => request.put(`/training/question/${id}/status`, null, { params: { status } })
+// 大模型一次出十几道题需要几十秒
+export const aiGenerateQuestions = (data) => request.post('/ai/question/generate', data, { timeout: 150000 })
+
+export const pageExams = (params) => request.get('/training/exam/page', { params })
+export const getExam = (id) => request.get(`/training/exam/${id}`)
+export const examQuestionCount = (category) => request.get('/training/exam/question-count', { params: { category } })
+export const createExam = (data) => request.post('/training/exam', data)
+export const updateExam = (id, data) => request.put(`/training/exam/${id}`, data)
+export const publishExam = (id) => request.post(`/training/exam/${id}/publish`)
+export const closeExam = (id) => request.post(`/training/exam/${id}/close`)
+export const removeExam = (id) => request.delete(`/training/exam/${id}`)
+export const examStats = (id) => request.get(`/training/exam/${id}/stats`)
+export const examRecords = (id, params) => request.get(`/training/exam/${id}/records`, { params })
+export const examRecordDetail = (recordId) => request.get(`/training/exam/record/${recordId}`)
+
+export const myExams = () => request.get('/training/my/exams')
+export const startExam = (examId) => request.post(`/training/my/exams/${examId}/start`)
+export const examPaper = (recordId) => request.get(`/training/my/record/${recordId}/paper`)
+export const saveExamAnswers = (recordId, answers) => request.put(`/training/my/record/${recordId}/answers`, { answers })
+export const submitExam = (recordId, answers) => request.post(`/training/my/record/${recordId}/submit`, { answers })
+export const examResult = (recordId) => request.get(`/training/my/record/${recordId}/result`)

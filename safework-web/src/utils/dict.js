@@ -67,3 +67,23 @@ export function nowStr(offsetDays = 0) {
   const p = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:00`
 }
+
+// 安全培训
+export const QUESTION_TYPES = {
+  SINGLE: { label: '单选题', type: 'primary' },
+  MULTI: { label: '多选题', type: 'warning' },
+  JUDGE: { label: '判断题', type: 'success' }
+}
+export const QUESTION_STATUS = {
+  0: { label: '待审核', type: 'warning' },
+  1: { label: '启用', type: 'success' },
+  2: { label: '停用', type: 'info' }
+}
+export const QUESTION_CATEGORIES = ['受限空间作业', '动火作业', '高处作业', '应急救援', '通用安全']
+export const EXAM_STATUS = {
+  DRAFT: { label: '草稿', type: 'info' },
+  PUBLISHED: { label: '进行中', type: 'success' },
+  CLOSED: { label: '已结束', type: 'info' }
+}
+/** 选项字母：0 → A */
+export const letter = (i) => String.fromCharCode(65 + i)

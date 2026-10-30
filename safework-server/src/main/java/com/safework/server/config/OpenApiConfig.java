@@ -55,6 +55,11 @@ public class OpenApiConfig {
     }
 
     @Bean
+    public GroupedOpenApi trainingApi() {
+        return group("6-安全培训", "/training/**");
+    }
+
+    @Bean
     public GroupedOpenApi platformApi() {
         return group("5-平台端", "/platform/**");
     }

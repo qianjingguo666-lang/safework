@@ -26,6 +26,10 @@
         </dependency>
         <dependency>
             <groupId>com.safework</groupId>
+            <artifactId>safework-training</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.safework</groupId>
             <artifactId>safework-ai</artifactId>
         </dependency>
         <dependency>
