@@ -104,13 +104,14 @@ public class TicketController {
     @Operation(summary = "提交审批（可以带申请人的手写签名）")
     @PostMapping(value = "/{id}/submit", consumes = MediaType.APPLICATION_JSON_VALUE)
     public R<Void> submit(@PathVariable Long id, @RequestBody TicketActionDTO dto) {
-        ticketService.submit(id, orEmpty(dto));
+        ticketService.submit(id, dto);
         return R.ok();
     }
 
     /**
      * 不带 JSON 请求体的提交（旧版本客户端、脚本）。以前提交接口没有请求体，
      * 有的客户端 POST 时会带上 application/x-www-form-urlencoded，只保留上面那个接口会返回 415。
+     * 注意上面的 @RequestBody 必须是必填：可选请求体遇到空请求时 consumes 条件不生效，两个接口会冲突（500）。
      */
     @OperLog(module = "作业票", action = "提交审批")
     @SaCheckPermission("ticket:add")

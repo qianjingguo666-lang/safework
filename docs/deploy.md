@@ -57,6 +57,35 @@ docker compose -f docker-compose.prod.yml ps
    ```
 5. 浏览器打开 `http://服务器IP`
 
+## 三（推荐）、2G 内存服务器：本机编译、上传发布包
+
+服务器内存只有 2G 时，在服务器上用 Docker 编译 Java 和前端很容易内存不足。改成在自己电脑上编译，服务器只负责运行：
+
+```
+本机：deploy\pack.ps1 ──▶ 编译 jar + 前端 dist ──▶ safework-release.tar.gz（几十 MB）
+                                                  │ scp 上传
+服务器：/opt/safework ──▶ bash start.sh ──▶ 只把 jar、dist 放进 JRE / Nginx 镜像，不编译
+```
+
+```powershell
+# 本机（项目根目录）
+powershell -ExecutionPolicy Bypass -File .\deploy\pack.ps1
+scp D:\code\safework-release.tar.gz root@服务器IP:/root/
+```
+
+```bash
+# 服务器
+mkdir -p /opt/safework && tar -xzf /root/safework-release.tar.gz -C /opt/safework && cd /opt/safework
+bash server-init.sh https://你的专属地址.mirror.aliyuncs.com   # 只需一次：交换空间、Docker、镜像加速
+cp .env.example .env && nano .env                              # 只需一次：修改密码、填 API Key
+bash start.sh
+```
+
+- 国内服务器连不上 Docker Hub：`server-init.sh` 会配置镜像加速。阿里云服务器到「容器镜像服务 ACR → 镜像工具 → 镜像加速器」复制专属地址传给脚本，另外还配置了两个公共加速地址备用
+- 发布新版本：本机重新运行 `pack.ps1`、上传，服务器解压到 `/opt/safework`（会覆盖程序文件，不会动 `.env` 和数据卷）后再 `bash start.sh`
+- 数据卷名称和 `docker-compose.prod.yml` 一样（项目名都是 `safework-prod`），以后换成在服务器上编译也不会丢数据
+- 备份：`bash backup.sh`
+
 ## 四、日常运维
 
 | 操作 | 命令 |
