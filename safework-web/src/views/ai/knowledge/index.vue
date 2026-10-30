@@ -56,7 +56,7 @@
         <el-tab-pane label="问答记录" name="log">
           <div class="toolbar">
             <el-select v-model="logQuery.bizType" placeholder="类型" clearable style="width: 120px" @change="loadLogs">
-              <el-option label="问答" value="CHAT" /><el-option label="智能体" value="AGENT" /><el-option label="作业票预审" value="REVIEW" />
+              <el-option label="问答" value="CHAT" /><el-option label="智能体" value="AGENT" /><el-option label="作业票预审" value="REVIEW" /><el-option label="AI 出题" value="QUESTION" /><el-option label="语音识别" value="ASR" /><el-option label="隐患提取" value="HAZARD" />
             </el-select>
             <el-select v-model="logQuery.hit" placeholder="是否命中" clearable style="width: 160px" @change="loadLogs">
               <el-option label="命中知识库" :value="1" /><el-option label="未命中（需要补充制度）" :value="0" />
@@ -184,7 +184,7 @@ async function preview(row) {
 const logLoading = ref(false)
 const logs = ref([])
 const logTotal = ref(0)
-const BIZ_TYPES = { CHAT: '问答', AGENT: '智能体', REVIEW: '作业票预审' }
+const BIZ_TYPES = { CHAT: '问答', AGENT: '智能体', REVIEW: '作业票预审', QUESTION: 'AI 出题', ASR: '语音识别', HAZARD: '隐患提取' }
 // 智能体记录的 sources 是 JSON：{ rounds, tokens, steps: [{ tool, args, ok, summary }] }
 function agentTrace(row) {
   try { return row.sources ? JSON.parse(row.sources) : null } catch { return null }

@@ -178,6 +178,8 @@ Check "改掉编号后导入成功（$($r.data.success) 条）" ($r.code -eq 200
 $imported = (Call GET "/safety/space/page?keyword=IM$ts&size=100" $null $tAdmin).data
 Check '导入的台账能查到，部门、责任人、风险等级都对上了' ($imported.total -eq $total -and @($imported.records | Where-Object { $_.riskLevel -eq 'HIGH' }).Count -ge 1 -and @($imported.records | Where-Object { $_.responsibleName }).Count -ge 1)
 Check '「停用」状态也导进来了' (@($imported.records | Where-Object { $_.status -eq 0 }).Count -ge 1)
+# 清理：导入的是台账的复制品（名称和原来的一样），停用掉，免得下拉框、语音上报匹配受限空间时出现重名
+$imported.records | ForEach-Object { Call PUT "/safety/space/$($_.id)/status" @{ status = 0 } $tAdmin | Out-Null }
 $r = PostFile '/safety/space/import' $tAdmin @{} ([Text.Encoding]::UTF8.GetBytes('not excel')) 'spaces.txt'; Show $r
 Check '不是 Excel 文件直接拒绝' ($r.code -eq 400)
 Remove-Item $exportFile

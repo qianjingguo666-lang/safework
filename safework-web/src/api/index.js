@@ -87,6 +87,13 @@ export const scanSpace = (token) => request.get(`/public/space/${token}`)
 export const pageHazards = (params) => request.get('/safety/hazard/page', { params })
 export const getHazard = (id) => request.get(`/safety/hazard/${id}`)
 export const reportHazard = (data) => request.post('/safety/hazard', data)
+// 语音智能上报：录音（16k PCM）转文字 → 提取隐患信息填表
+export const transcribeHazard = (pcm) => {
+  const form = new FormData()
+  form.append('audio', pcm, 'voice.pcm')
+  return request.post('/ai/hazard/transcribe', form, { timeout: 60000 })
+}
+export const parseHazardText = (text) => request.post('/ai/hazard/parse', { text }, { timeout: 45000 })
 /** action: assign / revoke / rectify / verify-pass / verify-fail */
 export const hazardAction = (id, action, data = {}) => request.post(`/safety/hazard/${id}/${action}`, data)
 

@@ -17,6 +17,10 @@ public class AiChatLog {
     public static final String REVIEW = "REVIEW";
     public static final String AGENT = "AGENT";
     public static final String QUESTION = "QUESTION";
+    /** 语音转文字（讯飞语音听写） */
+    public static final String ASR = "ASR";
+    /** 一句话提取隐患 */
+    public static final String HAZARD = "HAZARD";
 
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;

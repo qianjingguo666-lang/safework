@@ -146,3 +146,10 @@ safework:
       top-k: 4
       # 低于这个分数认为没检索到，直接回答“知识库里没有”，不让模型瞎编
       min-score: 0.25
+    # 语音转文字：讯飞开放平台「语音听写（流式版）」，控制台 → 我的应用 → 语音听写 → APPID、APIKey、APISecret
+    # 不配置也能用：语音上报隐患页面可以直接打字（手机输入法自带的语音输入也行）
+    asr:
+      host-url: ${AI_ASR_HOST_URL:wss://iat-api.xfyun.cn/v2/iat}
+      app-id: ${AI_ASR_APP_ID:}
+      api-key: ${AI_ASR_API_KEY:}
+      api-secret: ${AI_ASR_API_SECRET:}

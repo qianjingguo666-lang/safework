@@ -43,7 +43,7 @@ public class AiChatController {
     public R<AiStatusVO> status() {
         return R.ok(new AiStatusVO(llm.chatEnabled(), props.getChat().getModel(),
                 llm.embeddingEnabled(), props.getEmbedding().getModel(),
-                knowledgeService.documentCount(), knowledgeService.chunkCount()));
+                knowledgeService.documentCount(), knowledgeService.chunkCount(), props.getAsr().isEnabled()));
     }
 
     /**

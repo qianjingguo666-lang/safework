@@ -23,6 +23,7 @@
 | 3 | AI 知识库问答（RAG，流式输出、引用出处）、作业票 AI 预审 | ✅ 完成 |
 | 3 | AI 智能体（Function Calling：自主调用查询工具，权限内只读） | ✅ 完成 |
 | 3 | 安全培训考试（题库、随机组卷、自动阅卷、成绩统计）+ AI 根据制度出题 | ✅ 完成 |
+| 3 | 语音智能上报隐患（讯飞语音听写 + 大模型提取隐患信息填表，人工核对后提交） | ✅ 完成 |
 | 4 | Docker 部署（多阶段构建、Nginx 反向代理、一键发布、数据库备份） | ✅ 完成 |
 | 4 | 工程规范：Flyway 数据库版本管理、接口文档、单元测试、traceId 链路日志、GitHub Actions CI | ✅ 完成 |
 | 4 | 域名 + HTTPS | 下一步 |
@@ -71,7 +72,8 @@ safework
 ├── test-agent.ps1    AI 智能体（工具权限、数据权限、租户隔离、写操作人工确认）自测脚本
 ├── test-training.ps1 培训考试（组卷、防作弊、阅卷、补考、统计、AI 出题）自测脚本
 ├── test-risk.ps1     风险分级管控（LEC 定级、巡检、转隐患、提醒）自测脚本
-└── test-approval.ps1 可配置审批流（多级、会签、驳回重提、流程快照）自测脚本
+├── test-approval.ps1 可配置审批流（多级、会签、驳回重提、流程快照）自测脚本
+└── test-voice.ps1    语音智能上报隐患（提取、空间匹配、租户隔离、语音识别）自测脚本
 ```
 
 采用**模块化单体**：业务按 Maven 模块划分、边界清晰，但只部署一个进程，适合 2 核 4G 的个人服务器。后续需要时可以把 AI 模块单独拆成服务。
@@ -321,7 +323,7 @@ safework
 | 定时任务 | 分布式锁抢占、失败记录日志 |
 | 权限 | 套餐菜单的父子完整性 |
 | 附件 | 文件头识别（改扩展名伪装的文件被拒绝） |
-| AI | 文本切分、关键词打分、向量计算、JSON 提取、作业票规则预检；智能体循环（剧本模型、确认卡片）、工具参数校验（时间、按姓名找人）；AI 出题解析（兼容不规范输出）、出题原文选取 |
+| AI | 文本切分、关键词打分、向量计算、JSON 提取、作业票规则预检；智能体循环（剧本模型、确认卡片）、工具参数校验（时间、按姓名找人）；AI 出题解析（兼容不规范输出）、出题原文选取；讯飞鉴权签名、识别结果拼接；隐患提取（关键词兜底、受限空间匹配、校验大模型结果） |
 | 培训 | 题目校验、多选题阅卷、随机组卷（打乱选项后答案字母正确换算）、题库不足提示 |
 | 风险 | LEC 只能取标准分值、D 值分级边界、管控措施拆分、巡检到期状态 |
 
@@ -437,6 +439,32 @@ safework
 - 要求大模型输出固定 JSON，后端从回复中提取第一个完整 JSON 对象再解析（模型经常在前后加说明文字）
 - **AI 只提建议，不改变作业票状态**，是否批准由审批人决定
 
+### 语音智能上报隐患
+
+一线员工在现场戴着手套、拿着手机，很难一项项填表。上报隐患时可以直接说一句话：
+
+```
+“一号原料储罐旁边的可燃气体报警器不亮了，按测试按钮也不响”
+        │  浏览器录音 → 16k 16bit 单声道 PCM（Web Audio 降采样）
+        ▼
+讯飞语音听写（流式版）WebSocket ──▶ 文字
+        │
+        ▼
+大模型提取 ──▶ 标题：1# 原料储罐可燃气体报警器失效    类别：设备设施    等级：重大隐患
+              位置：罐区东侧 1# 原料储罐 T-101       关联受限空间：CS-001
+        │      （没配置大模型或调用失败：关键词规则兜底）
+        ▼
+填进上报表单（紫色底色标出 AI 填写的字段）──▶ 上报人核对、补照片后自己点提交
+```
+
+- **讯飞语音听写对接**（`XfyunIatClient`，只依赖 JDK 和 Jackson）：用 APISecret 对 `host / date / 请求行` 做 HMAC-SHA256 签名，拼到 wss 地址里鉴权；音频按帧 Base64 发送（第一帧带 APPID 和业务参数，最后一帧 status=2）；按段号拼接识别结果；常见错误码（11200 未开通 / 额度用完、10313 APPID 不匹配、401 签名错误、403 时间偏差）翻译成中文提示
+- **前端录音**：`getUserMedia` + Web Audio 采集，降采样到 16k、转 16bit 整数，最长 60 秒自动停止，显示音量条；浏览器只允许 https 或 localhost 使用麦克风，部署到 http 时提示用手机输入法自带的语音输入
+- **提取结果不可信，必须校验**（`HazardRules.sanitize`）：类别、等级只能是固定值（“重大隐患”转为 MAJOR）；模型返回的受限空间编号必须在本企业台账里，否则用规则重新匹配；超长截断；模型没给的字段用规则补上
+- **受限空间匹配**：编号（CS-001）、位号（T-101、R-201）、“一号原料储罐”这类说法都能匹配；只说“原料储罐”分不清是哪一个时不猜，避免关联错
+- **定级偏保守**：提示词要求拿不准时判重大隐患；判为重大时提醒上报人确认（提交后会立即通知安全员）
+- **人在回路**：接口只返回草稿，不写隐患台账；租户插件保证只匹配本企业的受限空间；语音识别、提取的每次调用都记录到【问答记录】（类型“语音识别”“隐患提取”），可以追溯
+- 不配置讯飞也能用：直接打字描述，同样能一键填表
+
 ### 配置 AI（可选）
 
 ```powershell
@@ -448,6 +476,7 @@ notepad config\secret.yml
   - **DeepSeek（推荐，智能体需要 Function Calling）**：platform.deepseek.com 创建 API Key，按 `secret.example.yml` 里的注释填写 `base-url`、`api-key`、`model`
   - 讯飞星火 Spark Lite（免费，但不支持智能体）：把 HTTP 服务的 **APIPassword** 填到 `chat.api-key`
 - 向量模型：阿里云百炼创建 API Key，填到 `embedding.api-key`
+- 语音听写（可选）：讯飞开放平台 → 控制台 → 创建应用 → 语音听写（流式版），把 **APPID、APIKey、APISecret** 填到 `asr.app-id`、`asr.api-key`、`asr.api-secret`（新用户有免费调用量）
 - `config/secret.yml` 已加入 `.gitignore`，不会提交到 GitHub
 
 ## 前端设计
@@ -518,6 +547,8 @@ notepad config\secret.yml
 | GET | /ai/status | AI 配置状态 | 登录即可 |
 | POST | /ai/chat/stream | 知识库问答（SSE：sources → delta… → done） | ai:chat |
 | GET | /ai/chat/logs | 问答记录（hit=0 只看未命中） | ai:knowledge:list |
+| POST | /ai/hazard/transcribe | 语音转文字（audio：16k PCM，最长 60 秒） | safety:hazard:report |
+| POST | /ai/hazard/parse | 一句话提取隐患信息（只返回草稿，不提交） | safety:hazard:report |
 | GET / POST / DELETE | /ai/knowledge/page、/upload、/{id} | 知识库文档 | ai:knowledge:* |
 | POST | /ai/knowledge/{id}/embed | 为文档生成向量 | ai:knowledge:upload |
 | POST | /ai/ticket/{id}/review | 作业票 AI 预审 | ai:ticket:review |
@@ -589,6 +620,7 @@ powershell -ExecutionPolicy Bypass -File .\test-agent.ps1
 powershell -ExecutionPolicy Bypass -File .\test-training.ps1
 powershell -ExecutionPolicy Bypass -File .\test-risk.ps1
 powershell -ExecutionPolicy Bypass -File .\test-approval.ps1
+powershell -ExecutionPolicy Bypass -File .\test-voice.ps1
 ```
 
 数据库表结构由 Flyway 在后端启动时自动升级，不需要手动执行 SQL。
