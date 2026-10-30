@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 public class AgentService {
 
     static final String SYSTEM_PROMPT = """
-            你是 SafeWork 安全生产管理平台的智能助手，可以调用工具查询本企业的隐患、作业票、受限空间、安全统计和安全制度。
+            你是 SafeWork 安全生产管理平台的智能助手，可以调用工具查询本企业的隐患、风险点、作业票、受限空间、安全统计和安全制度。
             当前用户：%s（%s）；当前时间：%s。
 
             规则：

@@ -14,6 +14,7 @@
 | 2 | 前端（Vue3 + Element Plus，动态路由、按钮权限） | ✅ 完成 |
 | 2 | 受限空间台账 + 现场二维码、隐患排查闭环 | ✅ 完成 |
 | 2 | 部门、用户管理完善、操作日志（AOP） | ✅ 完成 |
+| 2 | 风险分级管控（LEC 评估、四色分布、周期巡检、措施失效转隐患）——与隐患排查构成双重预防机制 | ✅ 完成 |
 | 2 | SaaS 平台端：企业开通、套餐、到期续费、停用 | ✅ 完成 |
 | 2 | 登录安全：图形验证码、失败锁定、登录日志、在线用户强制下线 | ✅ 完成 |
 | 2 | 消息通知（实时推送、待办提醒、通知公告）+ 定时任务（分布式锁、执行记录） | ✅ 完成 |
@@ -43,7 +44,7 @@
 safework
 ├── safework-common   公共模块：统一返回 R、业务异常、全局异常处理、租户上下文、实体基类
 ├── safework-system   系统模块：平台端（企业、套餐）、部门、用户、登录安全、角色、菜单权限、日志
-├── safework-safety   安全管理模块：受限空间台账、隐患排查治理
+├── safework-safety   安全管理模块：受限空间台账、隐患排查治理、风险分级管控
 ├── safework-ticket   作业票模块：作业票、审批流状态机、操作记录
 ├── safework-training 安全培训模块：题库、随机组卷、在线考试、自动阅卷、成绩统计
 ├── safework-ai       AI 模块：知识库（解析、切分、向量）、混合检索、流式问答、作业票预审
@@ -67,7 +68,8 @@ safework
 ├── test-message.ps1  消息推送、业务通知、公告、定时任务自测脚本
 ├── test-file.ps1     附件权限、Excel 导入导出、数据看板自测脚本
 ├── test-agent.ps1    AI 智能体（工具权限、数据权限、租户隔离、写操作人工确认）自测脚本
-└── test-training.ps1 培训考试（组卷、防作弊、阅卷、补考、统计、AI 出题）自测脚本
+├── test-training.ps1 培训考试（组卷、防作弊、阅卷、补考、统计、AI 出题）自测脚本
+└── test-risk.ps1     风险分级管控（LEC 定级、巡检、转隐患、提醒）自测脚本
 ```
 
 采用**模块化单体**：业务按 Maven 模块划分、边界清晰，但只部署一个进程，适合 2 核 4G 的个人服务器。后续需要时可以把 AI 模块单独拆成服务。
@@ -145,6 +147,33 @@ safework
 - 和作业票同样的状态机 + 乐观锁 + 处理记录写法，验证这套设计可以复用
 - 任何人都可以上报；安全员指派整改人和期限；**只有整改人本人**能提交整改；**整改人不能验收自己的整改**
 - 逾期提醒：整改中且超过期限的隐患标红，可以单独筛选，首页显示逾期数量
+
+## 风险分级管控（双重预防机制）
+
+化工企业要求建立“风险分级管控和隐患排查治理双重预防机制”：**事前**识别风险、定级、落实管控措施（风险分级管控），**事后**发现措施失效就作为隐患整改闭环（隐患排查治理）。本模块实现前一半，并和已有的隐患模块打通。
+
+```
+风险点（设备 / 作业活动 / 区域）→ LEC 评估：D = L × E × C → 自动定级（红橙黄蓝）→ 管控层级、巡检周期
+   ↓ 按周期巡检：责任人到现场逐条确认管控措施
+   ├─ 全部有效 → 排下次巡检
+   └─ 有措施失效 → 一键上报隐患（调用和隐患页面相同的上报方法）→ 指派 → 整改 → 验收 闭环
+```
+
+| 等级 | D 值 | 颜色 | 管控层级 | 默认（最长）巡检周期 |
+|---|---|---|---|---|
+| 重大风险 | &gt; 320 | 红 | 公司级 | 1 天 |
+| 较大风险 | 160 ~ 320 | 橙 | 部门级 | 7 天 |
+| 一般风险 | 70 ~ 160 | 黄 | 班组级 | 15 天 |
+| 低风险 | ≤ 70 | 蓝 | 岗位级 | 30 天 |
+
+- **L、E、C 只能取标准分值表里的值**（L 7 档、E 6 档、C 6 档）：随便填数字的话，不同人评出来的 D 值没有可比性。分值表由后端提供，前端下拉框和后端校验用的是同一份数据；前端实时显示 D 值和等级
+- **风险越高，巡检越频繁**：巡检周期可以比默认值短，不能比默认值长（重大风险至少每天一次）；重新评估后等级变化，按新周期重排下次巡检
+- **逐条确认**：巡检时管控措施一条一条确认“有效 / 失效”，提交的条数必须和当前措施一致，防止漏查；有措施失效但不上报隐患时，必须写明现场是怎么处理的
+- **措施失效转隐患**：自动生成标题和描述（哪条措施失效、现场说明），重大 / 较大风险点的措施失效按重大隐患上报；巡检记录关联隐患编号，可以追溯
+- **数据权限**：安全员管理全部风险点；作业负责人、监护人在【风险巡检】里只看到、只能巡检自己负责的
+- **提醒升级**：每天 8:40 定时任务提醒今天到期的；逾期的每天提醒责任人，重大 / 较大风险点逾期同时提醒安全员
+- **四色分布**：按位置分组，每个风险点一个色块，逾期的加虚线框，一眼看出哪个区域风险集中、哪些没按时巡检
+- 导出《风险分级管控清单》Excel（含 LEC 分值、管控层级、措施、周期）；智能体新增 search_risk_points 工具，可以问“有哪些重大风险没按时巡检”
 
 ## 系统管理
 
@@ -234,6 +263,7 @@ safework
 | V5 | 操作日志 trace_id、列表查询索引 |
 | V6 | AI 智能体菜单和权限 |
 | V7 | 安全培训：题库、考试、答卷表，演示题库和考试 |
+| V8 | 风险分级管控：风险点、巡检记录表，演示风险点 |
 
 - 空数据库：从 V1 开始全部执行
 - 以前用 init.sql 建好的库：配置了 `baseline-version: 4`，第一次启动只登记“已经到 V4”，然后执行 V5，**原有数据不动**
@@ -268,6 +298,7 @@ safework
 | 附件 | 文件头识别（改扩展名伪装的文件被拒绝） |
 | AI | 文本切分、关键词打分、向量计算、JSON 提取、作业票规则预检；智能体循环（剧本模型、确认卡片）、工具参数校验（时间、按姓名找人）；AI 出题解析（兼容不规范输出）、出题原文选取 |
 | 培训 | 题目校验、多选题阅卷、随机组卷（打乱选项后答案字母正确换算）、题库不足提示 |
+| 风险 | LEC 只能取标准分值、D 值分级边界、管控措施拆分、巡检到期状态 |
 
 ### 持续集成（GitHub Actions）
 
@@ -474,6 +505,8 @@ notepad config\secret.yml
 | GET / POST | /safety/space/export、/import-template、/import | 受限空间 导出 / 模板 / 导入 | safety:space:import |
 | GET | /safety/hazard/export、/ticket/export | 导出隐患、作业票台账 | safety:hazard:export、ticket:export |
 | GET | /dashboard/overview?days=30 | 数据看板 | dashboard:view |
+| GET / POST / PUT | /safety/risk/page、/overview、/export、/safety/risk、/{id}/status | 风险点台账、四色分布、导出 | risk:point:list、edit |
+| GET / POST | /safety/risk/check/tasks、/{id}/check、/check/page | 巡检任务、提交巡检（可转隐患）、巡检记录 | risk:check |
 | GET / POST / PUT | /training/question/page、/training/question、/approve、/remove | 题库 / 新增修改 / 审核 / 删除 | training:question:list、edit |
 | POST | /ai/question/generate | AI 根据制度文件出题（待审核入库） | training:question:ai |
 | GET / POST / PUT | /training/exam/page、/training/exam、/{id}/publish、/{id}/close | 考试管理 | training:exam:list、edit |
@@ -526,6 +559,7 @@ powershell -ExecutionPolicy Bypass -File .\test-message.ps1
 powershell -ExecutionPolicy Bypass -File .\test-file.ps1
 powershell -ExecutionPolicy Bypass -File .\test-agent.ps1
 powershell -ExecutionPolicy Bypass -File .\test-training.ps1
+powershell -ExecutionPolicy Bypass -File .\test-risk.ps1
 ```
 
 数据库表结构由 Flyway 在后端启动时自动升级，不需要手动执行 SQL。

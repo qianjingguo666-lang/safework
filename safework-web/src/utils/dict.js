@@ -87,3 +87,17 @@ export const EXAM_STATUS = {
 }
 /** 选项字母：0 → A */
 export const letter = (i) => String.fromCharCode(65 + i)
+
+// 风险分级管控（四色）
+export const RISK_GRADES = {
+  MAJOR: { label: '重大风险', short: '重大', color: '#e5484d', text: '#fff', control: '公司级' },
+  HIGH: { label: '较大风险', short: '较大', color: '#f76b15', text: '#fff', control: '部门级' },
+  GENERAL: { label: '一般风险', short: '一般', color: '#f5c400', text: '#3d3200', control: '班组级' },
+  LOW: { label: '低风险', short: '低', color: '#3b82f6', text: '#fff', control: '岗位级' }
+}
+export const RISK_POINT_TYPES = ['设备设施', '作业活动', '区域场所']
+export const CHECK_STATES = {
+  OVERDUE: { label: '巡检逾期', type: 'danger' },
+  TODAY: { label: '今天到期', type: 'warning' },
+  UPCOMING: { label: '未到期', type: 'info' }
+}

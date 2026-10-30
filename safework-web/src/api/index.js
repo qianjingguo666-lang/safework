@@ -165,3 +165,15 @@ export const examPaper = (recordId) => request.get(`/training/my/record/${record
 export const saveExamAnswers = (recordId, answers) => request.put(`/training/my/record/${recordId}/answers`, { answers })
 export const submitExam = (recordId, answers) => request.post(`/training/my/record/${recordId}/submit`, { answers })
 export const examResult = (recordId) => request.get(`/training/my/record/${recordId}/result`)
+
+// ---------- 风险分级管控 ----------
+export const riskLecOptions = () => request.get('/safety/risk/lec-options')
+export const pageRisks = (params) => request.get('/safety/risk/page', { params })
+export const riskOverview = () => request.get('/safety/risk/overview')
+export const riskDetail = (id) => request.get(`/safety/risk/${id}`)
+export const createRisk = (data) => request.post('/safety/risk', data)
+export const updateRisk = (id, data) => request.put(`/safety/risk/${id}`, data)
+export const changeRiskStatus = (id, status) => request.put(`/safety/risk/${id}/status`, null, { params: { status } })
+export const riskTasks = () => request.get('/safety/risk/check/tasks')
+export const submitRiskCheck = (id, data) => request.post(`/safety/risk/${id}/check`, data)
+export const pageRiskChecks = (params) => request.get('/safety/risk/check/page', { params })

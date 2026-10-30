@@ -144,7 +144,8 @@ const ICONS = {
   ai: 'MagicStick', chat: 'ChatDotRound', book: 'Reading', agent: 'Cpu',
   platform: 'Platform', company: 'OfficeBuilding', package: 'Present', login: 'Key', online: 'Monitor',
   notice: 'Notification', job: 'Timer', chart: 'DataAnalysis',
-  training: 'Reading', exam: 'EditPen', question: 'Collection', 'exam-manage': 'Memo'
+  training: 'Reading', exam: 'EditPen', question: 'Collection', 'exam-manage': 'Memo',
+  risk: 'Odometer', 'risk-check': 'Finished'
 }
 const iconOf = (name) => ICONS[name] || 'Document'
 const pages = (list = []) => list.filter((c) => c.menuType === 'C')

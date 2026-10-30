@@ -109,7 +109,7 @@ $tTest  = Login 'test' 'admin'
 Title '1. 工具按权限过滤'
 $names = @((Call GET '/ai/agent/tools' $null $tAdmin).data | ForEach-Object { $_.name })
 Write-Host "  管理员可用：$($names -join ', ')" -ForegroundColor DarkGray
-Check '管理员有 8 个工具（5 个查询 + 3 个需要确认的操作）' ($names.Count -eq 8)
+Check '管理员有 9 个工具（6 个查询 + 3 个需要确认的操作）' ($names.Count -eq 9)
 $names = @((Call GET '/ai/agent/tools' $null $tLisi).data | ForEach-Object { $_.name })
 Write-Host "  作业负责人可用：$($names -join ', ')" -ForegroundColor DarkGray
 Check '作业负责人没有数据看板、隐患处理权限，也就没有【查询安全总览】【指派隐患】工具' (-not ($names -contains 'get_safety_overview') -and -not ($names -contains 'assign_hazard') -and $names -contains 'search_hazards')
