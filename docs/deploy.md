@@ -69,11 +69,8 @@ docker compose -f docker-compose.prod.yml ps
 
 ## 五、注意
 
-- `sql/init.sql` 只在**第一次**创建数据库时执行。之后修改表结构，执行 `sql/upgrade/` 里对应版本的升级脚本，不能删数据卷重建（会丢数据）：
-  ```bash
-  docker compose -f docker-compose.prod.yml exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 safework' < sql/upgrade/v2-platform-security.sql
-  # 之后的版本同理，例如 v3-message-job.sql，按版本号顺序执行
-  ```
+- 数据库表结构由 **Flyway** 管理：后端启动时自动执行 `db/migration` 里新增的版本脚本，发布新版本只需要 `bash deploy/update.sh`，**不能删数据卷重建**（会丢数据）。执行记录可以查 `flyway_schema_history` 表
+- 后端日志同时写到数据卷 `backend-logs`（`/app/logs/safework.log`，单文件 20MB 滚动、保留 14 天）。用户报错误编号时：`docker compose -f docker-compose.prod.yml exec backend grep 错误编号 /app/logs/safework.log`
 - 平台管理员账号 `platform / admin / admin123` 部署后**第一时间修改密码**（右上角 → 修改密码）
 - 生产环境 `SPRING_PROFILES_ACTIVE=prod`：验证码答案不会返回给前端，测试脚本不能直接对生产环境运行
 - 演示环境的账号是公开的，任何人都能调用 AI 接口：DeepSeek 账户**只充少量余额**，后端已按用户限流

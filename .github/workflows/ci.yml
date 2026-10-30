@@ -1,0 +1,44 @@
+# 每次 push / 提交 PR 时自动：编译后端 + 跑单元测试，构建前端
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  backend:
+    name: 后端编译 + 单元测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      # verify 会编译所有模块并运行 src/test 下的 JUnit 测试，任何一个测试失败都会让这次构建变红
+      - name: Maven verify
+        run: mvn -B -ntp verify
+      - name: 上传测试报告（失败时方便查看）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: '**/target/surefire-reports/'
+
+  frontend:
+    name: 前端构建
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: safework-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: safework-web/package-lock.json
+      - run: npm ci
+      - run: npm run build

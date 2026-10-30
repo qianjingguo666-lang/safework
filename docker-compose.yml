@@ -8,11 +8,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: safework123
       TZ: Asia/Shanghai
+      # 只创建空数据库，表结构由后端启动时的 Flyway 自动创建、升级（见 safework-server/src/main/resources/db/migration）
+      MYSQL_DATABASE: safework
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
     ports:
       - "3307:3306"
     volumes:
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - mysql-data:/var/lib/mysql
 
   redis:

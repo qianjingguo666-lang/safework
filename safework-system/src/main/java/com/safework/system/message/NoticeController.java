@@ -1,5 +1,7 @@
 package com.safework.system.message;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.common.annotation.OperLog;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 通知公告管理（企业管理员） */
+@Tag(name = "通知公告")
 @RestController
 @RequestMapping("/system/notice")
 @RequiredArgsConstructor
@@ -24,6 +27,7 @@ public class NoticeController {
     private final NoticeService noticeService;
 
     @SaCheckPermission("system:notice:list")
+    @Operation(summary = "公告列表")
     @GetMapping("/page")
     public R<Page<SysNotice>> page(@RequestParam(defaultValue = "1") long current,
                                    @RequestParam(defaultValue = "10") long size,
@@ -33,6 +37,7 @@ public class NoticeController {
 
     @OperLog(module = "通知公告", action = "发布公告")
     @SaCheckPermission("system:notice:add")
+    @Operation(summary = "发布公告")
     @PostMapping
     public R<Long> publish(@Valid @RequestBody NoticeSaveDTO dto) {
         return R.ok(noticeService.publish(dto));
@@ -40,6 +45,7 @@ public class NoticeController {
 
     @OperLog(module = "通知公告", action = "撤回公告")
     @SaCheckPermission("system:notice:add")
+    @Operation(summary = "撤回公告")
     @DeleteMapping("/{id}")
     public R<Void> withdraw(@PathVariable Long id) {
         noticeService.withdraw(id);

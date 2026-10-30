@@ -1,5 +1,7 @@
 package com.safework.system.controller.platform;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.safework.common.annotation.OperLog;
 import com.safework.common.core.R;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "平台-套餐管理")
 @RestController
 @RequestMapping("/platform/package")
 @RequiredArgsConstructor
@@ -30,6 +33,7 @@ public class PlatformPackageController {
     private final TenantPackageService packageService;
 
     @SaCheckPermission("platform:package:list")
+    @Operation(summary = "套餐列表")
     @GetMapping("/list")
     public R<List<PackageVO>> list() {
         return R.ok(packageService.list());
@@ -37,6 +41,7 @@ public class PlatformPackageController {
 
     /** 开通企业时选择套餐 */
     @SaCheckPermission("platform:tenant:list")
+    @Operation(summary = "开通企业时选择套餐")
     @GetMapping("/options")
     public R<List<SysTenantPackage>> options() {
         return R.ok(packageService.options());
@@ -44,6 +49,7 @@ public class PlatformPackageController {
 
     /** 可以放进套餐的全部企业端菜单 */
     @SaCheckPermission("platform:package:list")
+    @Operation(summary = "可以放进套餐的全部企业端菜单")
     @GetMapping("/menu-tree")
     public R<List<MenuVO>> menuTree() {
         return R.ok(packageService.menuTree());
@@ -51,6 +57,7 @@ public class PlatformPackageController {
 
     @OperLog(module = "套餐管理", action = "新增套餐")
     @SaCheckPermission("platform:package:edit")
+    @Operation(summary = "新增套餐")
     @PostMapping
     public R<Long> create(@Valid @RequestBody PackageSaveDTO dto) {
         return R.ok(packageService.create(dto));
@@ -58,6 +65,7 @@ public class PlatformPackageController {
 
     @OperLog(module = "套餐管理", action = "修改套餐")
     @SaCheckPermission("platform:package:edit")
+    @Operation(summary = "修改套餐")
     @PutMapping("/{id}")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody PackageSaveDTO dto) {
         packageService.update(id, dto);
@@ -66,6 +74,7 @@ public class PlatformPackageController {
 
     @OperLog(module = "套餐管理", action = "启用/停用套餐")
     @SaCheckPermission("platform:package:edit")
+    @Operation(summary = "启用/停用套餐")
     @PutMapping("/{id}/status")
     public R<Void> changeStatus(@PathVariable Long id, @Valid @RequestBody StatusDTO dto) {
         packageService.changeStatus(id, dto.getStatus());
@@ -74,6 +83,7 @@ public class PlatformPackageController {
 
     @OperLog(module = "套餐管理", action = "删除套餐")
     @SaCheckPermission("platform:package:edit")
+    @Operation(summary = "删除套餐")
     @DeleteMapping("/{id}")
     public R<Void> remove(@PathVariable Long id) {
         packageService.remove(id);

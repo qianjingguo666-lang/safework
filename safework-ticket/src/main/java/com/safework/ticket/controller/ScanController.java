@@ -1,5 +1,7 @@
 package com.safework.ticket.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.safework.common.core.R;
 import com.safework.common.tenant.TenantContext;
@@ -27,6 +29,7 @@ import java.util.List;
  * 难点：没有登录就没有租户上下文。做法是先用 qr_token 跳过租户插件查到空间，
  * 再把空间所属的租户 ID 临时放进 TenantContext，后续查询照常被隔离在这个企业内。
  */
+@Tag(name = "扫码查看", description = "现场扫码，不需要登录")
 @RestController
 @RequestMapping("/public/space")
 @RequiredArgsConstructor
@@ -37,6 +40,7 @@ public class ScanController {
     private final SysTenantMapper tenantMapper;
     private final DeptService deptService;
 
+    @Operation(summary = "扫码查看受限空间（匿名）")
     @GetMapping("/{token}")
     public R<ScanVO> scan(@PathVariable String token) {
         ConfinedSpace space = spaceService.getByQrToken(token);

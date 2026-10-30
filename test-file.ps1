@@ -135,6 +135,7 @@ $r = Upload $tLisi 'TICKET' $tid 'ATTACH' $exe 'tool.exe'; Show $r
 Check 'exe 等不在白名单的文件被拒绝' ($r.code -eq 400)
 
 Title '5. Excel 导出（带数据权限）'
+# 演示数据里的台账默认都是启用的，先临时停用 CS-005，验证「停用」状态也能导出、导入
 $cs5 = (Call GET '/safety/space/page?keyword=CS-005&size=1' $null $tAdmin).data.records[0]
 Call PUT "/safety/space/$($cs5.id)/status" @{ status = 0 } $tAdmin | Out-Null
 # 只导出演示数据里 CS- 开头的台账（导入测试会把编号改成新前缀，可以重复运行）

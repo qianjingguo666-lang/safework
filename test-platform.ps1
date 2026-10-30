@@ -96,7 +96,7 @@ $me = (Call GET '/auth/me' $null $tBoss).data
 Write-Host "  菜单 = $((MenuNames $me) -join ', ')   套餐 = $($me.tenant.packageName)" -ForegroundColor DarkGray
 Check '新企业管理员能登录，套餐是基础版' ($me.tenant.packageName -eq '基础版')
 $names = ((MenuNames $me) | Sort-Object) -join ','
-Check '基础版只有【作业管理】【系统管理】' ($names -eq ((@('作业管理', '系统管理') | Sort-Object) -join ','))
+Check '基础版只有【数据看板】【作业管理】【系统管理】' ($names -eq ((@('数据看板', '作业管理', '系统管理') | Sort-Object) -join ','))
 Check '没有受限空间、AI 权限' (-not ($me.permissions -contains 'safety:space:list') -and -not ($me.permissions -contains 'ai:chat'))
 $r = Call GET '/safety/space/page' $null $tBoss
 Check '直接调用套餐外的接口也被拒绝（403）' ($r.code -eq 403)
@@ -204,3 +204,4 @@ Check '统计数据正常' ($s.tenantTotal -ge 3 -and $s.loginFailToday -ge 6)
 Write-Host ''
 if ($failed -eq 0) { Write-Host '全部通过，SaaS 平台端 + 登录安全完成！' -ForegroundColor Green }
 else { Write-Host "有 $failed 项失败，把上面的输出发给 Claude" -ForegroundColor Yellow }
+

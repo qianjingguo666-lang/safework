@@ -26,6 +26,15 @@ spring:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:safework}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:safework123}
+  # 数据库版本管理：启动时按版本号执行 db/migration 下还没执行过的脚本
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # 以前手动导入过 init.sql 和 v2~v4 升级脚本的数据库（有表但没有 Flyway 记录）：
+    # 第一次启动时标记为第 4 版，只执行 V5 及以后的脚本；全新的空数据库会从 V1 开始执行
+    baseline-on-migrate: true
+    baseline-version: 4
+    baseline-description: 手动导入的 init.sql + v2~v4
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -66,6 +75,20 @@ management:
 logging:
   level:
     com.safework: info
+  # 每行日志带上 traceId：同一个请求的所有日志用同一个编号，出问题时按编号搜索
+  pattern:
+    level: "%5p [%X{traceId:-}]"
+
+# ============ 接口文档 ============
+# 开发环境打开 http://localhost:8080/swagger-ui.html；生产环境在 application-prod.yml 里关闭
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    # 记住填过的 token，刷新页面不用重新填
+    persist-authorization: true
+    tags-sorter: alpha
 
 # ============ 登录安全 ============
 safework:

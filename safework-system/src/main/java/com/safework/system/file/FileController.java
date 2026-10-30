@@ -1,5 +1,7 @@
 package com.safework.system.file;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.safework.common.annotation.OperLog;
 import com.safework.common.core.R;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /** 附件：登录即可调用，具体能不能看、能不能传由业务单据决定（见 BizAccessChecker） */
+@Tag(name = "附件", description = "上传、预览下载、删除，权限跟随业务单据")
 @RestController
 @RequestMapping("/file")
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class FileController {
 
     private final FileService fileService;
 
+    @Operation(summary = "附件列表（同时返回当前用户能否上传）")
     @GetMapping("/list")
     public R<FileListVO> list(@RequestParam String bizType, @RequestParam Long bizId,
                               @RequestParam(required = false) String tag) {
@@ -28,6 +32,7 @@ public class FileController {
     }
 
     @OperLog(module = "附件", action = "上传附件")
+    @Operation(summary = "上传附件")
     @PostMapping("/upload")
     public R<SysFile> upload(@RequestParam String bizType, @RequestParam Long bizId, @RequestParam String tag,
                              @RequestParam("file") MultipartFile file) {
@@ -35,6 +40,7 @@ public class FileController {
     }
 
     /** 预览 / 下载（download=true 强制下载） */
+    @Operation(summary = "预览 / 下载（download=true 强制下载）")
     @GetMapping("/{id}")
     public void download(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean download,
                          HttpServletResponse response) {
@@ -42,6 +48,7 @@ public class FileController {
     }
 
     @OperLog(module = "附件", action = "删除附件")
+    @Operation(summary = "删除附件")
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         fileService.delete(id);

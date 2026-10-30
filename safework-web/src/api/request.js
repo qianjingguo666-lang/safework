@@ -31,7 +31,9 @@ request.interceptors.response.use(
       useUserStore().reset()
       router.replace({ path: '/login', query: { redirect: router.currentRoute.value.fullPath } })
     }
-    ElMessage.error(msg || '请求失败')
+    // 系统错误带上错误编号（traceId），用户截图反馈时开发者可以直接按编号查日志
+    const traceId = resp.data.traceId
+    ElMessage.error(code >= 500 && traceId ? `${msg || '请求失败'}（错误编号 ${traceId}）` : (msg || '请求失败'))
     const error = new Error(msg)
     // 标记为“已提示过”，全局的未处理异常监听会忽略它，避免控制台重复报错
     error.handled = true

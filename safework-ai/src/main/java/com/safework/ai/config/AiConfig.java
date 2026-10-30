@@ -1,5 +1,6 @@
 package com.safework.ai.config;
 
+import com.safework.common.trace.MdcTaskDecorator;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,8 @@ public class AiConfig {
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(20);
         executor.setThreadNamePrefix("ai-stream-");
+        // 把请求的 traceId 带进线程池，流式回答里的日志也能按编号查到
+        executor.setTaskDecorator(new MdcTaskDecorator());
         executor.initialize();
         return executor;
     }

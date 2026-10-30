@@ -1,5 +1,7 @@
 package com.safework.system.job;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /** 平台端：定时任务 */
+@Tag(name = "平台-定时任务")
 @RestController
 @RequestMapping("/platform/job")
 @RequiredArgsConstructor
@@ -25,12 +28,14 @@ public class JobController {
     private final JobRunner jobRunner;
 
     @SaCheckPermission("platform:job:list")
+    @Operation(summary = "任务列表")
     @GetMapping("/list")
     public R<List<JobVO>> list() {
         return R.ok(jobRunner.list());
     }
 
     @SaCheckPermission("platform:job:list")
+    @Operation(summary = "执行记录")
     @GetMapping("/log/page")
     public R<Page<SysJobLog>> logs(@RequestParam(defaultValue = "1") long current,
                                    @RequestParam(defaultValue = "10") long size,
@@ -42,6 +47,7 @@ public class JobController {
     /** 立即执行一次（同步执行，返回本次执行记录） */
     @OperLog(module = "定时任务", action = "手动执行")
     @SaCheckPermission("platform:job:run")
+    @Operation(summary = "立即执行一次（同步执行，返回本次执行记录）")
     @PostMapping("/{code}/run")
     public R<SysJobLog> run(@PathVariable String code) {
         Object name = StpUtil.getSession().get(AuthService.SESSION_NICKNAME);

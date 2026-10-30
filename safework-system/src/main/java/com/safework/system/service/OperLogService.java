@@ -24,6 +24,7 @@ public class OperLogService {
                 .eq(StringUtils.hasText(q.getModule()), SysOperLog::getModule, q.getModule())
                 .like(StringUtils.hasText(q.getOperatorName()), SysOperLog::getOperatorName, q.getOperatorName())
                 .eq(q.getStatus() != null, SysOperLog::getStatus, q.getStatus())
+                .eq(StringUtils.hasText(q.getTraceId()), SysOperLog::getTraceId, q.getTraceId())
                 .ge(q.getBeginTime() != null, SysOperLog::getCreateTime, q.getBeginTime())
                 .le(q.getEndTime() != null, SysOperLog::getCreateTime, q.getEndTime())
                 .orderByDesc(SysOperLog::getCreateTime));

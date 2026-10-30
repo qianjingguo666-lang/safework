@@ -1,4 +1,6 @@
-# SafeWork 智能安全作业管理平台
+﻿# SafeWork 智能安全作业管理平台
+
+[![CI](https://github.com/qianjingguo666-lang/safework/actions/workflows/ci.yml/badge.svg)](https://github.com/qianjingguo666-lang/safework/actions/workflows/ci.yml)
 
 面向工贸、化工企业的多租户 SaaS：受限空间、动火、高处等特殊作业的作业票申请、审批与台账管理，并内置 AI 安全规程问答与作业票智能预审。平台端负责企业入驻、套餐、续费和停用。
 
@@ -18,7 +20,8 @@
 | 2 | 附件（隐患现场 / 整改照片、作业票附件）、Excel 导入导出、数据看板（ECharts） | ✅ 完成 |
 | 3 | AI 知识库问答（RAG，流式输出、引用出处）、作业票 AI 预审 | ✅ 完成 |
 | 4 | Docker 部署（多阶段构建、Nginx 反向代理、一键发布、数据库备份） | ✅ 完成 |
-| 4 | 域名 + HTTPS、CI/CD | 下一步 |
+| 4 | 工程规范：Flyway 数据库版本管理、接口文档、单元测试、traceId 链路日志、GitHub Actions CI | ✅ 完成 |
+| 4 | 域名 + HTTPS | 下一步 |
 
 ## 技术栈
 
@@ -26,7 +29,7 @@
 
 **前端**：Vue 3.5 · Vite 5 · Element Plus · Pinia · Vue Router · Axios · ECharts 5（按需引入）
 
-**其他**：EasyExcel（导入导出）
+**其他**：EasyExcel（导入导出）· Flyway（数据库版本管理）· springdoc-openapi（接口文档）· JUnit 5 + Mockito · GitHub Actions
 
 **AI**：讯飞星火（OpenAI 兼容接口）· 阿里云百炼向量模型 · PDFBox · SSE 流式输出
 
@@ -43,8 +46,8 @@ safework
 ├── safework-ai       AI 模块：知识库（解析、切分、向量）、混合检索、流式问答、作业票预审
 ├── safework-server   启动模块：配置（租户插件、登录拦截）并打包成可运行 jar
 ├── safework-web      前端：Vue3 + Element Plus
-├── sql/init.sql      建表脚本和演示数据（新建数据库用）
-├── sql/upgrade/      已有数据库的升级脚本（按版本号执行一次）
+├── safework-server/src/main/resources/db/migration/  Flyway 数据库脚本（V1 建表 + 演示数据，之后每次改表加一个新版本）
+├── .github/workflows/ci.yml  GitHub Actions：自动编译、跑单元测试、构建前端
 ├── config/secret.example.yml  AI 密钥配置模板（复制为 secret.yml，不会提交）
 ├── docs/knowledge/   示例制度文件《特殊作业安全管理制度（示例）》，可上传到知识库测试
 ├── docker-compose.yml       本地开发：只启动 MySQL + Redis
@@ -211,6 +214,57 @@ safework
 - 统计全部在数据库里 `GROUP BY` 聚合，没有数据的日期补 0；SQL 不写 tenant_id，租户插件自动加上
 - 配色：作业类型用固定顺序的分类色（同一类型在所有图里颜色不变），风险等级用状态色并配文字；条形图数值直接标在末端
 
+## 工程规范
+
+### 数据库版本管理（Flyway）
+
+表结构变更写成 `db/migration/V{版本号}__说明.sql`，后端**启动时自动执行**还没执行过的版本，执行记录在 `flyway_schema_history` 表。不再需要手动 `docker cp` 执行 SQL。
+
+| 版本 | 内容 |
+|---|---|
+| V1 | 建表 + 演示数据 |
+| V2 | 平台端、登录安全 |
+| V3 | 消息通知、定时任务 |
+| V4 | 附件、Excel、看板 |
+| V5 | 操作日志 trace_id、列表查询索引 |
+
+- 空数据库：从 V1 开始全部执行
+- 以前用 init.sql 建好的库：配置了 `baseline-version: 4`，第一次启动只登记“已经到 V4”，然后执行 V5，**原有数据不动**
+- 已经执行过的脚本不能再修改（Flyway 会校验文件校验和，改了启动会报错），要改表就新增下一个版本
+
+### 接口文档（springdoc-openapi）
+
+开发环境启动后打开 http://localhost:8080/swagger-ui.html ，按模块分组。先调 `/auth/login` 拿 token，点右上角 **Authorize** 填入，就能直接在页面上调接口。生产环境（prod）关闭文档。
+
+### 请求链路编号（traceId）
+
+- 每个请求生成一个 traceId（Nginx 传入的 `X-Request-Id` 优先），写进日志 MDC，每行日志都带 `[traceId]`
+- 响应头返回 `X-Trace-Id`；接口出错时返回体里也有 `traceId`，前端提示“错误编号：xxx”
+- 用户反馈问题时报这个编号，在日志里一搜就能找到这次请求的完整日志；操作日志页面也能按错误编号查
+- 异步线程（AI 流式回答）通过 `TaskDecorator` 传递 traceId；定时任务生成 `job-` 开头的编号
+
+### 权限缓存
+
+`StpInterfaceImpl` 在一次请求内缓存当前用户的权限、角色。一个接口里多次 `@SaCheckPermission` / 菜单判断只查一次数据库。
+
+### 单元测试
+
+`mvn test` 运行，不需要启动 MySQL、Redis（Redis 用 Mockito 模拟），覆盖核心业务规则：
+
+| 模块 | 测试 |
+|---|---|
+| 作业票 | 状态机（不能跳步、终态）、气体检测阈值和 30 分钟时效、看板按天补 0 |
+| 隐患 | 闭环状态机（验收不通过退回整改） |
+| 登录安全 | 失败 5 次锁定、用户名大小写、企业隔离；验证码一次性、生产环境不返回答案 |
+| 定时任务 | 分布式锁抢占、失败记录日志 |
+| 权限 | 套餐菜单的父子完整性 |
+| 附件 | 文件头识别（改扩展名伪装的文件被拒绝） |
+| AI | 文本切分、关键词打分、向量计算、JSON 提取、作业票规则预检 |
+
+### 持续集成（GitHub Actions）
+
+每次 push 到 GitHub 自动运行：后端 `mvn verify`（编译 + 全部单元测试），前端 `npm ci && npm run build`。结果看仓库的 **Actions** 页面，README 顶部的徽章显示最近一次是否通过。
+
 ## AI 助手
 
 ### 知识库问答（RAG）
@@ -327,6 +381,8 @@ notepad config\secret.yml
 | GET | /dashboard/overview?days=30 | 数据看板 | dashboard:view |
 | GET | /actuator/health | 健康检查 | 否 |
 
+完整接口和参数见在线文档：http://localhost:8080/swagger-ui.html（开发环境）
+
 请求头：`Authorization: Bearer <token>`；时间格式：`yyyy-MM-dd HH:mm:ss`
 
 ## 部署
@@ -350,7 +406,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose up -d
 
 # 2. 后端（窗口 1）
-mvn clean package -DskipTests
+mvn clean package          # 会先跑单元测试；只想快速打包可以加 -DskipTests
 # 显式指定开发环境：电脑上如果设置了全局环境变量 SPRING_PROFILES_ACTIVE（别的项目留下的），会覆盖默认的 dev
 java -jar safework-server\target\safework-server.jar --spring.profiles.active=dev
 
@@ -370,14 +426,5 @@ powershell -ExecutionPolicy Bypass -File .\test-message.ps1
 powershell -ExecutionPolicy Bypass -File .\test-file.ps1
 ```
 
-已有数据库升级（保留原有数据）：
+数据库表结构由 Flyway 在后端启动时自动升级，不需要手动执行 SQL。
 
-```powershell
-# 按版本顺序执行，每个文件只执行一次
-docker cp sql\upgrade\v2-platform-security.sql safework-mysql:/tmp/v2.sql
-docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v2.sql"
-docker cp sql\upgrade\v3-message-job.sql safework-mysql:/tmp/v3.sql
-docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v3.sql"
-docker cp sql\upgrade\v4-file-excel-dashboard.sql safework-mysql:/tmp/v4.sql
-docker exec safework-mysql sh -c "mysql -uroot -psafework123 --default-character-set=utf8mb4 safework < /tmp/v4.sql"
-```

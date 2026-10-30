@@ -28,7 +28,11 @@ public class WebConfig implements WebMvcConfigurer {
             // 扫码查看受限空间：现场人员不需要登录
             "/public/**",
             "/actuator/health",
-            "/error"
+            "/error",
+            // 接口文档页面本身不需要登录（生产环境已关闭文档，这几个地址直接 404）
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html"
     );
 
     private final TenantInterceptor tenantInterceptor;

@@ -4,6 +4,20 @@ safework:
     captcha-enabled: true
     captcha-debug: false
 
+# 生产环境不对外暴露接口文档
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 logging:
   level:
     com.safework: info
+  # 日志同时写文件（Docker 挂载了 backend-logs 数据卷），按大小滚动，保留 14 天
+  file:
+    name: /app/logs/safework.log
+  logback:
+    rollingpolicy:
+      max-file-size: 20MB
+      max-history: 14

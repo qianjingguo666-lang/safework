@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.safework.common.annotation.OperLog;
 import com.safework.common.exception.BizException;
 import com.safework.common.tenant.TenantContext;
+import com.safework.common.trace.TraceContext;
 import com.safework.common.util.IpUtils;
 import com.safework.system.entity.SysOperLog;
 import com.safework.system.service.AuthService;
@@ -89,6 +90,7 @@ public class OperLogAspect {
             entry.setRequestUri(req.getRequestURI());
             entry.setIp(IpUtils.clientIp(req));
         }
+        entry.setTraceId(TraceContext.get());
         entry.setStatus(error == null ? 1 : 0);
         if (error != null) {
             String msg = error instanceof BizException ? error.getMessage()

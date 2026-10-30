@@ -1,5 +1,7 @@
 package com.safework.ai.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.ai.client.LlmClient;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+@Tag(name = "AI 安全问答", description = "知识库问答（SSE 流式）、问答记录、作业票 AI 预审")
 @RestController
 @RequestMapping("/ai")
 @RequiredArgsConstructor
@@ -35,6 +38,7 @@ public class AiChatController {
     private final AiProperties props;
 
     /** AI 配置状态：前端据此提示“未配置大模型” */
+    @Operation(summary = "AI 配置状态")
     @GetMapping("/status")
     public R<AiStatusVO> status() {
         return R.ok(new AiStatusVO(llm.chatEnabled(), props.getChat().getModel(),
@@ -49,18 +53,21 @@ public class AiChatController {
     @SaCheckPermission("ai:chat")
     // 不写 produces：返回 SseEmitter 时 Spring 会自动设置 text/event-stream；
     // 写了的话，限流等异常就无法按 JSON 返回（会变成 406）
+    @Operation(summary = "知识库问答（SSE：sources → delta… → done）")
     @PostMapping("/chat/stream")
     public SseEmitter stream(@Valid @RequestBody ChatRequest req) {
         return chatService.stream(req);
     }
 
     @SaCheckPermission("ai:knowledge:list")
+    @Operation(summary = "问答记录")
     @GetMapping("/chat/logs")
     public R<Page<AiChatLog>> logs(ChatLogQueryDTO query) {
         return R.ok(chatService.logs(query));
     }
 
     @SaCheckPermission("ai:ticket:review")
+    @Operation(summary = "作业票 AI 预审")
     @PostMapping("/ticket/{id}/review")
     public R<ReviewResultVO> review(@PathVariable Long id) {
         return R.ok(reviewService.review(id));

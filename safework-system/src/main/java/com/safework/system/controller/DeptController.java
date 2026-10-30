@@ -1,5 +1,7 @@
 package com.safework.system.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.safework.common.annotation.OperLog;
 import com.safework.common.core.R;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "部门管理")
 @RestController
 @RequestMapping("/system/dept")
 @RequiredArgsConstructor
@@ -27,6 +30,7 @@ public class DeptController {
     private final DeptService deptService;
 
     /** 部门树：登录即可查看（用户管理、受限空间等页面的部门下拉都要用） */
+    @Operation(summary = "部门树")
     @GetMapping("/tree")
     public R<List<DeptVO>> tree() {
         return R.ok(deptService.tree());
@@ -34,6 +38,7 @@ public class DeptController {
 
     @OperLog(module = "部门管理", action = "新增部门")
     @SaCheckPermission("system:dept:add")
+    @Operation(summary = "新增部门")
     @PostMapping
     public R<Long> create(@Valid @RequestBody DeptSaveDTO dto) {
         return R.ok(deptService.create(dto));
@@ -41,6 +46,7 @@ public class DeptController {
 
     @OperLog(module = "部门管理", action = "修改部门")
     @SaCheckPermission("system:dept:edit")
+    @Operation(summary = "修改部门")
     @PutMapping("/{id}")
     public R<Void> update(@PathVariable Long id, @Valid @RequestBody DeptSaveDTO dto) {
         deptService.update(id, dto);
@@ -49,6 +55,7 @@ public class DeptController {
 
     @OperLog(module = "部门管理", action = "删除部门")
     @SaCheckPermission("system:dept:remove")
+    @Operation(summary = "删除部门")
     @DeleteMapping("/{id}")
     public R<Void> remove(@PathVariable Long id) {
         deptService.remove(id);

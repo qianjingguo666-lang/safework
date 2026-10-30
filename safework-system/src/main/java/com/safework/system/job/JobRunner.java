@@ -4,6 +4,7 @@ import com.safework.system.mapper.SysJobLogMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.common.exception.BizException;
+import com.safework.common.trace.TraceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -85,6 +86,9 @@ public class JobRunner implements SchedulingConfigurer {
         if (!Boolean.TRUE.equals(locked)) {
             throw new BizException("任务【" + job.name() + "】正在执行（可能在另一台服务器上），请稍后再试");
         }
+        // 定时任务没有 Web 请求，单独生成一个 traceId（job- 开头），任务里打的日志都能按编号查到
+        String previousTrace = TraceContext.get();
+        TraceContext.set("job-" + TraceContext.newId());
         SysJobLog entry = new SysJobLog();
         entry.setJobCode(job.code());
         entry.setJobName(job.name());
@@ -104,6 +108,11 @@ public class JobRunner implements SchedulingConfigurer {
             entry.setCostMs(System.currentTimeMillis() - start);
             redis.execute(UNLOCK, List.of(lockKey), lockValue);
             logMapper.insert(entry);
+            if (previousTrace != null) {
+                TraceContext.set(previousTrace);
+            } else {
+                TraceContext.clear();
+            }
         }
         return entry;
     }

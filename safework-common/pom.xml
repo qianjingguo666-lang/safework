@@ -12,6 +12,11 @@
     <description>公共模块：统一返回、异常、租户上下文、实体基类</description>
 
     <dependencies>
+        <!-- 接口文档注解（@Tag、@Operation）：放在公共模块，各业务模块的 Controller 都能用 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

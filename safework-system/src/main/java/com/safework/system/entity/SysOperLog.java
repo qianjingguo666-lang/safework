@@ -31,6 +31,8 @@ public class SysOperLog {
     private String errorMsg;
     private Long costMs;
     private String ip;
+    /** 请求链路编号：和后端日志、接口错误提示里的编号一致 */
+    private String traceId;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }

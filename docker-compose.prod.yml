@@ -10,12 +10,13 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
       TZ: Asia/Shanghai
+      # 只创建空数据库，表结构由后端启动时的 Flyway 自动创建、升级（见 safework-server/src/main/resources/db/migration）
+      MYSQL_DATABASE: safework
     # 小内存服务器：限制缓冲池、关闭性能统计，MySQL 能少用几百 MB 内存
     command: >
       --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
       --innodb-buffer-pool-size=256M --performance-schema=OFF
     volumes:
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - mysql-data:/var/lib/mysql
     # 不映射端口：数据库只允许容器内部访问，公网连不上
     healthcheck:
@@ -66,6 +67,7 @@ services:
     # 上传的附件（现场照片）存在这个数据卷里，重新部署不会丢
     volumes:
       - upload-data:/app/data
+      - backend-logs:/app/logs
     depends_on:
       mysql:
         condition: service_healthy
@@ -85,3 +87,4 @@ volumes:
   mysql-data:
   redis-data:
   upload-data:
+  backend-logs:

@@ -5,6 +5,7 @@
         <el-option v-for="m in MODULES" :key="m" :label="m" :value="m" />
       </el-select>
       <el-input v-model="query.operatorName" placeholder="操作人" clearable style="width: 150px" @keyup.enter="search" @clear="search" />
+      <el-input v-model="query.traceId" placeholder="错误编号" clearable style="width: 170px" @keyup.enter="search" @clear="search" />
       <el-select v-model="query.status" placeholder="结果" clearable style="width: 100px" @change="search">
         <el-option label="成功" :value="1" /><el-option label="失败" :value="0" />
       </el-select>
@@ -19,6 +20,7 @@
           <div class="expand">
             <div><b>方法：</b>{{ row.method }}</div>
             <div><b>请求：</b>{{ row.requestMethod }} {{ row.requestUri }}</div>
+            <div v-if="row.traceId"><b>编号：</b><code>{{ row.traceId }}</code>（后端日志里搜这个编号可以看到这次请求的全部日志）</div>
             <div><b>参数：</b><code>{{ row.requestParams || '（未记录）' }}</code></div>
             <div v-if="row.errorMsg" class="err"><b>错误：</b>{{ row.errorMsg }}</div>
           </div>
@@ -47,12 +49,12 @@
 import { onMounted, reactive, ref } from 'vue'
 import { pageOperLogs } from '@/api'
 
-const MODULES = ['作业票', '隐患排查', '受限空间', '用户管理', '角色管理', '部门管理', '个人中心']
+const MODULES = ['作业票', '隐患排查', '受限空间', '用户管理', '角色管理', '部门管理', '个人中心', '附件', '通知公告', '在线用户']
 const loading = ref(false)
 const list = ref([])
 const total = ref(0)
 const range = ref([])
-const query = reactive({ current: 1, size: 20, module: '', operatorName: '', status: null })
+const query = reactive({ current: 1, size: 20, module: '', operatorName: '', traceId: '', status: null })
 
 async function load() {
   loading.value = true
