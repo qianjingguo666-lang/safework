@@ -131,3 +131,21 @@ export const DRILL_STATUS = {
   CANCELLED: { label: '已取消', type: 'info' }
 }
 export const DRILL_TYPES = { TABLETOP: '桌面推演', LIVE: '实战演练' }
+
+// 人员资质
+export const CERT_TYPES = {
+  CONFINED_SPACE: '有限空间作业安全培训合格证',
+  GUARDIAN: '特殊作业监护人培训合格证',
+  WELDING: '特种作业操作证（焊接与热切割）',
+  HEIGHT: '特种作业操作证（高处作业）',
+  ELECTRICIAN: '特种作业操作证（电工）',
+  HAZCHEM: '特种作业操作证（危险化学品）',
+  SAFETY_MANAGER: '安全生产管理人员安全资格证',
+  OTHER: '其他'
+}
+export const CERT_STATES = {
+  VALID: { label: '有效', type: 'success' },
+  EXPIRING: { label: '即将到期', type: 'warning' },
+  EXPIRED: { label: '已过期', type: 'danger' }
+}
+export const CERT_HOLDER_ROLES = { APPLICANT: '作业负责人', GUARDIAN: '监护人' }

@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.common.exception.BizException;
+import com.safework.safety.cert.CertService;
 import com.safework.safety.entity.ConfinedSpace;
 import com.safework.safety.service.SpaceService;
 import com.safework.system.entity.SysUser;
@@ -56,6 +57,7 @@ public class TicketService {
     private final TicketNotifier notifier;
     private final ApprovalService approvalService;
     private final SignatureService signatureService;
+    private final CertService certService;
 
     // ========================= 查询 =========================
 
@@ -151,6 +153,8 @@ public class TicketService {
         if (t.getTicketType().isGasRequired()) {
             GasChecker.checkValues(t);
         }
+        // 作业负责人、监护人必须持证，并且证书在作业结束前一直有效（要求由企业在【人员资质】里配置）
+        certService.requireQualified(t.getTicketType().name(), t.getApplicantId(), t.getGuardianId(), t.getPlanEndTime());
         // 按当前的审批流程配置开始新的一轮：保存流程快照，激活第 1 个节点
         approvalService.prepare(t);
         fire(t, TicketAction.SUBMIT, me, null, sign);
@@ -243,6 +247,8 @@ public class TicketService {
         if (t.getTicketType().isGasRequired()) {
             GasChecker.checkFresh(t);
         }
+        // 审批期间证书可能被注销或改了日期，开工前再确认一次
+        certService.requireQualified(t.getTicketType().name(), t.getApplicantId(), t.getGuardianId(), t.getPlanEndTime());
         t.setActualStartTime(now);
         fire(t, TicketAction.START, me, dto.getComment(), sign);
     }

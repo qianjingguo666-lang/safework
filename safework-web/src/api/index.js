@@ -209,3 +209,13 @@ export const changeRiskStatus = (id, status) => request.put(`/safety/risk/${id}/
 export const riskTasks = () => request.get('/safety/risk/check/tasks')
 export const submitRiskCheck = (id, data) => request.post(`/safety/risk/${id}/check`, data)
 export const pageRiskChecks = (params) => request.get('/safety/risk/check/page', { params })
+
+// 人员资质
+export const certPage = (params) => request.get('/safety/cert/page', { params })
+export const certOverview = () => request.get('/safety/cert/overview')
+export const certDetail = (id) => request.get(`/safety/cert/${id}`)
+export const saveCert = (id, data) => (id ? request.put(`/safety/cert/${id}`, data) : request.post('/safety/cert', data))
+export const deleteCert = (id) => request.delete(`/safety/cert/${id}`)
+export const certRequirements = () => request.get('/safety/cert/requirement')
+export const saveCertRequirements = (items) => request.put('/safety/cert/requirement', { items })
+export const certTicketCheck = (params) => request.get('/safety/cert/ticket-check', { params })

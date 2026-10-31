@@ -28,6 +28,10 @@
           <el-option v-for="g in guardians" :key="g.id" :label="g.nickname" :value="g.id" />
         </el-select>
       </el-form-item>
+      <el-alert v-if="certProblems.length" type="error" :closable="false" show-icon class="cert-alert" title="持证不符合要求，保存后提交审批会被拦截">
+        <div v-for="p in certProblems" :key="p.role">{{ p.roleName }} {{ p.userName }}：{{ p.problems.join('；') }}</div>
+        <div class="cert-tip">请到【安全管理 → 人员资质】更新证书，或更换监护人</div>
+      </el-alert>
       <el-form-item label="作业内容">
         <el-input v-model="form.workContent" type="textarea" :rows="2" />
       </el-form-item>
@@ -72,9 +76,9 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createTicket, listGuardians, spaceOptions, updateTicket } from '@/api'
+import { certTicketCheck, createTicket, listGuardians, spaceOptions, updateTicket } from '@/api'
 import { TICKET_TYPES } from '@/utils/dict'
 
 const emit = defineEmits(['saved'])
@@ -105,6 +109,23 @@ const rules = {
   guardianId: [{ required: true, message: '请选择监护人' }],
   spaceId: [{ required: true, message: '受限空间作业必须选择台账中的空间' }]
 }
+
+// 持证预检：作业类型、监护人、结束时间变了就重新检查（和提交审批时后端的校验是同一套规则）
+const certProblems = ref([])
+let checkSeq = 0
+watch(() => [visible.value, form.ticketType, form.guardianId, form.planRange?.[1]], async ([v, ticketType, guardianId, end]) => {
+  const seq = ++checkSeq
+  if (!v || !ticketType) {
+    certProblems.value = []
+    return
+  }
+  try {
+    const r = await certTicketCheck({ ticketType, guardianId: guardianId || undefined, planEndTime: end || undefined })
+    if (seq === checkSeq) certProblems.value = r || []
+  } catch {
+    if (seq === checkSeq) certProblems.value = []
+  }
+})
 
 // 选择受限空间后自动带出位置
 function onSpace(id) {
@@ -155,5 +176,8 @@ defineExpose({ open })
 </script>
 
 <style scoped>
+.cert-alert { margin: -4px 0 18px 110px; width: auto; }
+.cert-alert div { line-height: 1.7; }
+.cert-tip { color: #999; font-size: 12px; }
 .unit { margin-left: 8px; color: #999; font-size: 12px; white-space: nowrap; }
 </style>
