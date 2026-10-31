@@ -218,9 +218,15 @@ async function onCommand(cmd) {
 
 <style scoped>
 .layout { height: 100vh; }
-.aside { background: #0f1b2d; transition: width .2s; overflow: hidden; }
-.aside .el-menu { border-right: none; }
+.aside { background: #0f1b2d; transition: width .2s; overflow: hidden; display: flex; flex-direction: column; }
+/* 菜单多了以后侧边栏自己滚动：Logo 固定在顶部，菜单区域单独出滚动条 */
+.aside .el-menu { border-right: none; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.aside .el-menu::-webkit-scrollbar { width: 6px; }
+.aside .el-menu::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .2); border-radius: 3px; }
+.aside .el-menu::-webkit-scrollbar-track { background: transparent; }
+.aside .el-menu { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .2) transparent; }
 .logo {
+  flex-shrink: 0;
   height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 20px;
   color: #fff; font-size: 18px; font-weight: 600; cursor: pointer; white-space: nowrap;
 }
