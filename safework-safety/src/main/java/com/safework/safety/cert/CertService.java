@@ -219,6 +219,14 @@ public class CertService {
         return result;
     }
 
+    /** 某类作业里某个角色要求的证书类型（承包商作业人员的校验也用这里的配置） */
+    public List<String> requiredTypes(String ticketType, String holderRole) {
+        return requirementMapper.selectList(Wrappers.<CertRequirement>lambdaQuery()
+                        .eq(CertRequirement::getTicketType, ticketType)
+                        .eq(CertRequirement::getHolderRole, holderRole))
+                .stream().map(CertRequirement::getCertType).toList();
+    }
+
     /** 不合格直接拦截，错误信息写清楚是谁、缺什么 */
     public void requireQualified(String ticketType, Long applicantId, Long guardianId, LocalDateTime workEnd) {
         List<CertProblemVO> problems = check(ticketType, applicantId, guardianId, workEnd);

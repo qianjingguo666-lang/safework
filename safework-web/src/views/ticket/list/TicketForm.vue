@@ -28,9 +28,27 @@
           <el-option v-for="g in guardians" :key="g.id" :label="g.nickname" :value="g.id" />
         </el-select>
       </el-form-item>
-      <el-alert v-if="certProblems.length" type="error" :closable="false" show-icon class="cert-alert" title="持证不符合要求，保存后提交审批会被拦截">
-        <div v-for="p in certProblems" :key="p.role">{{ p.roleName }} {{ p.userName }}：{{ p.problems.join('；') }}</div>
-        <div class="cert-tip">请到【安全管理 → 人员资质】更新证书，或更换监护人</div>
+      <el-form-item label="作业单位">
+        <el-radio-group v-model="form.byContractor" @change="onByContractor">
+          <el-radio :value="false">本企业</el-radio>
+          <el-radio :value="true" :disabled="!contractors.length">承包商{{ contractors.length ? '' : '（没有审核合格的承包商）' }}</el-radio>
+        </el-radio-group>
+      </el-form-item>
+      <template v-if="form.byContractor">
+        <el-form-item label="承包商" prop="contractorId">
+          <el-select v-model="form.contractorId" filterable placeholder="只列出审核合格的承包商" style="width: 100%" @change="form.contractorWorkerIds = []">
+            <el-option v-for="c in contractors" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="作业人员" prop="contractorWorkerIds">
+          <el-select v-model="form.contractorWorkerIds" multiple filterable :multiple-limit="20" placeholder="承包商在场人员" style="width: 100%">
+            <el-option v-for="w in contractorWorkers" :key="w.id" :label="w.jobType ? `${w.name}（${w.jobType}）` : w.name" :value="w.id" />
+          </el-select>
+        </el-form-item>
+      </template>
+      <el-alert v-if="certProblems.length" type="error" :closable="false" show-icon class="cert-alert" title="不符合作业要求，保存后提交审批会被拦截">
+        <div v-for="(p, i) in certProblems" :key="i">{{ p.roleName }} {{ p.userName }}：{{ p.problems.join('；') }}</div>
+        <div class="cert-tip">请到【安全管理 → 人员资质 / 承包商管理】更新证书、培训，或更换人员</div>
       </el-alert>
       <el-form-item label="作业内容">
         <el-input v-model="form.workContent" type="textarea" :rows="2" />
@@ -78,7 +96,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { certTicketCheck, createTicket, listGuardians, spaceOptions, updateTicket } from '@/api'
+import { certTicketCheck, contractorOptions, createTicket, listGuardians, spaceOptions, updateTicket } from '@/api'
 import { TICKET_TYPES } from '@/utils/dict'
 
 const emit = defineEmits(['saved'])
@@ -97,6 +115,7 @@ const nowStr = () => {
 
 const empty = () => ({
   ticketType: 'CONFINED_SPACE', spaceId: null, title: '', location: '', planRange: [], guardianId: null,
+  byContractor: false, contractorId: null, contractorWorkerIds: [],
   workContent: '', safetyMeasures: '', gasOxygen: null, gasLel: null, gasH2s: null, gasCheckTime: nowStr()
 })
 const form = reactive(empty())
@@ -107,20 +126,35 @@ const rules = {
   location: [{ required: true, message: '请输入作业地点', trigger: 'blur' }],
   planRange: [{ required: true, type: 'array', len: 2, message: '请选择计划时间' }],
   guardianId: [{ required: true, message: '请选择监护人' }],
-  spaceId: [{ required: true, message: '受限空间作业必须选择台账中的空间' }]
+  spaceId: [{ required: true, message: '受限空间作业必须选择台账中的空间' }],
+  contractorId: [{ required: true, message: '请选择承包商' }],
+  contractorWorkerIds: [{ required: true, type: 'array', min: 1, message: '请选择承包商的作业人员' }]
+}
+
+// ---------------- 承包商作业 ----------------
+const contractors = ref([])
+const contractorWorkers = computed(() => contractors.value.find((c) => c.id === form.contractorId)?.workers || [])
+function onByContractor(v) {
+  if (!v) {
+    form.contractorId = null
+    form.contractorWorkerIds = []
+  }
 }
 
 // 持证预检：作业类型、监护人、结束时间变了就重新检查（和提交审批时后端的校验是同一套规则）
 const certProblems = ref([])
 let checkSeq = 0
-watch(() => [visible.value, form.ticketType, form.guardianId, form.planRange?.[1]], async ([v, ticketType, guardianId, end]) => {
+watch(() => [visible.value, form.ticketType, form.guardianId, form.planRange?.[1], form.contractorId, form.contractorWorkerIds.join(',')], async ([v, ticketType, guardianId, end, contractorId, workerIds]) => {
   const seq = ++checkSeq
   if (!v || !ticketType) {
     certProblems.value = []
     return
   }
   try {
-    const r = await certTicketCheck({ ticketType, guardianId: guardianId || undefined, planEndTime: end || undefined })
+    const r = await certTicketCheck({
+      ticketType, guardianId: guardianId || undefined, planEndTime: end || undefined,
+      contractorId: contractorId || undefined, workerIds: contractorId && workerIds ? workerIds : undefined
+    })
     if (seq === checkSeq) certProblems.value = r || []
   } catch {
     if (seq === checkSeq) certProblems.value = []
@@ -141,18 +175,25 @@ async function open(ticket) {
     form.planRange = [ticket.planStartTime, ticket.planEndTime]
     // el-input-number 需要数字，后端 BigDecimal 可能返回字符串
     ;['gasOxygen', 'gasLel', 'gasH2s'].forEach((k) => { if (form[k] != null) form[k] = Number(form[k]) })
+    form.byContractor = !!ticket.contractorId
+    form.contractorWorkerIds = ticket.contractorWorkerIds ? ticket.contractorWorkerIds.split(',') : []
   }
   visible.value = true
-  const [g, sp] = await Promise.all([listGuardians(), spaceOptions()])
+  const [g, sp, cs] = await Promise.all([listGuardians(), spaceOptions(), contractorOptions().catch(() => [])])
   guardians.value = g
   spaces.value = sp
+  contractors.value = cs || []
 }
 
 async function save() {
   await formRef.value.validate()
-  const { planRange, ...rest } = form
+  const { planRange, byContractor, ...rest } = form
   const data = { ...rest, planStartTime: planRange[0], planEndTime: planRange[1] }
   if (data.ticketType !== 'CONFINED_SPACE') data.spaceId = null
+  if (!byContractor) {
+    data.contractorId = null
+    data.contractorWorkerIds = []
+  }
   if (!gasRequired.value) {
     data.gasOxygen = data.gasLel = data.gasH2s = data.gasCheckTime = null
   }

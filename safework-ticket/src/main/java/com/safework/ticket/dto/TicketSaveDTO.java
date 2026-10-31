@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.time.LocalDateTime;
 
 /** 新建 / 修改作业票。草稿阶段气体数据可以先不填，提交审批时再校验 */
@@ -29,6 +30,10 @@ public class TicketSaveDTO {
     private Long spaceId;
     @NotNull(message = "请选择监护人")
     private Long guardianId;
+
+    /** 承包商作业时选择承包商和作业人员；本企业作业不填 */
+    private Long contractorId;
+    private List<Long> contractorWorkerIds;
 
     private BigDecimal gasOxygen;
     private BigDecimal gasLel;

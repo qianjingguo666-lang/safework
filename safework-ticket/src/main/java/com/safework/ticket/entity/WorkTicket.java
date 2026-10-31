@@ -39,6 +39,16 @@ public class WorkTicket extends BaseEntity {
     private String applicantName;
     private Long guardianId;
     private String guardianName;
+    /** 承包商作业：承包商和作业人员（本企业自己干的为空）；改成本企业作业时要清空，所以 null 也写入 */
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private Long contractorId;
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private String contractorName;
+    /** 承包商作业人员 ID，逗号分隔 */
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private String contractorWorkerIds;
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private String contractorWorkerNames;
     private Long approverId;
     private String approverName;
 

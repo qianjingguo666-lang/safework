@@ -148,4 +148,19 @@ export const CERT_STATES = {
   EXPIRING: { label: '即将到期', type: 'warning' },
   EXPIRED: { label: '已过期', type: 'danger' }
 }
-export const CERT_HOLDER_ROLES = { APPLICANT: '作业负责人', GUARDIAN: '监护人' }
+export const CERT_HOLDER_ROLES = { APPLICANT: '作业负责人', GUARDIAN: '监护人', WORKER: '承包商作业人员' }
+
+// 承包商
+export const CONTRACTOR_STATUS = {
+  PENDING: { label: '待审核', type: 'warning' },
+  APPROVED: { label: '合格', type: 'success' },
+  REJECTED: { label: '已驳回', type: 'info' },
+  BLACKLISTED: { label: '黑名单', type: 'danger' }
+}
+export const CONTRACTOR_ACTIONS = {
+  APPROVE: { label: '审核通过', type: 'success', comment: false },
+  REJECT: { label: '驳回', type: 'warning', comment: true },
+  RESUBMIT: { label: '重新提交审核', type: 'primary', comment: false },
+  BLACKLIST: { label: '列入黑名单', type: 'danger', comment: true },
+  LIFT: { label: '解除黑名单', type: 'primary', comment: true }
+}

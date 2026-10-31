@@ -39,7 +39,9 @@ public final class CertRules {
     /** 作业票里的两个角色 */
     public static final String APPLICANT = "APPLICANT";
     public static final String GUARDIAN = "GUARDIAN";
-    public static final Map<String, String> HOLDER_ROLES = Map.of(APPLICANT, "作业负责人", GUARDIAN, "监护人");
+    /** 承包商作业人员（不是系统用户，证书登记在承包商人员信息里） */
+    public static final String WORKER = "WORKER";
+    public static final Map<String, String> HOLDER_ROLES = Map.of(APPLICANT, "作业负责人", GUARDIAN, "监护人", WORKER, "承包商作业人员");
     /** 作业票类型（和 ticket 模块的 TicketType 一致，这里只用字符串，避免安全模块反过来依赖作业票模块） */
     public static final Map<String, String> TICKET_TYPES = new LinkedHashMap<>();
 

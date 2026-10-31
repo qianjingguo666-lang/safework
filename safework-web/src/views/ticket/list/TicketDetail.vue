@@ -74,6 +74,8 @@
         <el-descriptions-item label="实际结束">{{ t.actualEndTime || '-' }}</el-descriptions-item>
         <el-descriptions-item label="申请人">{{ t.applicantName }}</el-descriptions-item>
         <el-descriptions-item label="监护人">{{ t.guardianName }}</el-descriptions-item>
+        <el-descriptions-item v-if="t.contractorName" label="承包商">{{ t.contractorName }}</el-descriptions-item>
+        <el-descriptions-item v-if="t.contractorName" label="作业人员">{{ t.contractorWorkerNames }}</el-descriptions-item>
         <el-descriptions-item label="审批人" :span="2">{{ t.approverName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="作业内容" :span="2">{{ t.workContent || '-' }}</el-descriptions-item>
         <el-descriptions-item label="安全措施" :span="2"><span class="pre">{{ t.safetyMeasures || '-' }}</span></el-descriptions-item>

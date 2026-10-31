@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.common.exception.BizException;
 import com.safework.safety.cert.CertService;
+import com.safework.safety.contractor.ContractorService;
 import com.safework.safety.entity.ConfinedSpace;
 import com.safework.safety.service.SpaceService;
 import com.safework.system.entity.SysUser;
@@ -58,6 +59,7 @@ public class TicketService {
     private final ApprovalService approvalService;
     private final SignatureService signatureService;
     private final CertService certService;
+    private final ContractorService contractorService;
 
     // ========================= 查询 =========================
 
@@ -155,6 +157,9 @@ public class TicketService {
         }
         // 作业负责人、监护人必须持证，并且证书在作业结束前一直有效（要求由企业在【人员资质】里配置）
         certService.requireQualified(t.getTicketType().name(), t.getApplicantId(), t.getGuardianId(), t.getPlanEndTime());
+        // 承包商作业：单位审核合格、没被拉黑、资质保险有效；作业人员入厂培训有效并持证
+        contractorService.requireEligible(t.getTicketType().name(), t.getContractorId(),
+                ContractorService.parseIds(t.getContractorWorkerIds()), t.getPlanEndTime());
         // 按当前的审批流程配置开始新的一轮：保存流程快照，激活第 1 个节点
         approvalService.prepare(t);
         fire(t, TicketAction.SUBMIT, me, null, sign);
@@ -249,6 +254,8 @@ public class TicketService {
         }
         // 审批期间证书可能被注销或改了日期，开工前再确认一次
         certService.requireQualified(t.getTicketType().name(), t.getApplicantId(), t.getGuardianId(), t.getPlanEndTime());
+        contractorService.requireEligible(t.getTicketType().name(), t.getContractorId(),
+                ContractorService.parseIds(t.getContractorWorkerIds()), t.getPlanEndTime());
         t.setActualStartTime(now);
         fire(t, TicketAction.START, me, dto.getComment(), sign);
     }
@@ -361,6 +368,11 @@ public class TicketService {
         t.setPlanEndTime(dto.getPlanEndTime());
         t.setGuardianId(guardian.getId());
         t.setGuardianName(guardian.getNickname());
+        ContractorService.Snapshot cs = contractorService.snapshot(dto.getContractorId(), dto.getContractorWorkerIds());
+        t.setContractorId(cs.contractorId());
+        t.setContractorName(cs.contractorName());
+        t.setContractorWorkerIds(cs.workerIds());
+        t.setContractorWorkerNames(cs.workerNames());
         t.setGasOxygen(dto.getGasOxygen());
         t.setGasLel(dto.getGasLel());
         t.setGasH2s(dto.getGasH2s());

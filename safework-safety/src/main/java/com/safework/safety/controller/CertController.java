@@ -10,6 +10,7 @@ import com.safework.safety.cert.CertQueryDTO;
 import com.safework.safety.cert.CertSaveDTO;
 import com.safework.safety.cert.CertService;
 import com.safework.safety.cert.RequirementDTO;
+import com.safework.safety.contractor.ContractorService;
 import com.safework.safety.entity.CertRequirement;
 import com.safework.safety.entity.PersonCert;
 import cn.dev33.satoken.stp.StpUtil;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Tag(name = "人员资质", description = "证书台账、到期提醒、开票持证要求")
@@ -39,6 +41,7 @@ import java.util.List;
 public class CertController {
 
     private final CertService service;
+    private final ContractorService contractorService;
 
     @SaCheckPermission(CertService.PERM_LIST)
     @Operation(summary = "证书分页（安全员看全部，其他人只看自己的）；state = VALID / EXPIRING / EXPIRED")
@@ -78,12 +81,18 @@ public class CertController {
     }
 
     @SaCheckPermission("ticket:add")
-    @Operation(summary = "新建作业票时预检：当前用户（作业负责人）和所选监护人的证书是否满足要求")
+    @Operation(summary = "新建作业票时预检：当前用户（作业负责人）、所选监护人的证书，以及承包商和作业人员是否满足进场要求")
     @GetMapping("/ticket-check")
     public R<List<CertProblemVO>> ticketCheck(@RequestParam String ticketType,
                                              @RequestParam(required = false) Long guardianId,
-                                             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime planEndTime) {
-        return R.ok(service.check(ticketType, StpUtil.getLoginIdAsLong(), guardianId, planEndTime));
+                                             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime planEndTime,
+                                             @RequestParam(required = false) Long contractorId,
+                                             @RequestParam(required = false) List<Long> workerIds) {
+        List<CertProblemVO> result = new ArrayList<>(service.check(ticketType, StpUtil.getLoginIdAsLong(), guardianId, planEndTime));
+        if (contractorId != null) {
+            result.addAll(contractorService.check(ticketType, contractorId, workerIds, planEndTime));
+        }
+        return R.ok(result);
     }
 
     @SaCheckPermission(CertService.PERM_LIST)

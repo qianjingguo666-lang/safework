@@ -33,6 +33,7 @@
         <tr><th>作业名称</th><td colspan="3">{{ t.title }}</td></tr>
         <tr><th>作业地点</th><td>{{ t.location }}</td><th>受限空间</th><td>{{ t.spaceName || '—' }}</td></tr>
         <tr><th>作业负责人</th><td>{{ t.applicantName }}</td><th>监护人</th><td>{{ t.guardianName }}</td></tr>
+        <tr v-if="t.contractorName"><th>承包商</th><td>{{ t.contractorName }}</td><th>作业人员</th><td>{{ t.contractorWorkerNames }}</td></tr>
         <tr><th>计划时间</th><td colspan="3">{{ hm(t.planStartTime) }} 至 {{ hm(t.planEndTime) }}</td></tr>
         <tr><th>实际时间</th><td colspan="3">{{ t.actualStartTime ? hm(t.actualStartTime) : '　　　　' }} 至 {{ t.actualEndTime ? hm(t.actualEndTime) : '　　　　' }}</td></tr>
         <tr><th>作业内容</th><td colspan="3" class="pre">{{ t.workContent || '—' }}</td></tr>
