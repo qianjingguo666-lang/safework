@@ -64,6 +64,9 @@ services:
       AI_ASR_APP_ID: ${AI_ASR_APP_ID:-}
       AI_ASR_API_KEY: ${AI_ASR_API_KEY:-}
       AI_ASR_API_SECRET: ${AI_ASR_API_SECRET:-}
+      # 演示模式（公开演示站才打开）
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_AI_DAILY_LIMIT: ${DEMO_AI_DAILY_LIMIT:-200}
       JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx512m -XX:+UseG1GC}
       # 生产环境不打印 SQL，日志级别改为 info
       LOGGING_LEVEL_COM_SAFEWORK: info

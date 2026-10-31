@@ -81,6 +81,8 @@ export const updateSpace = (id, data) => request.put(`/safety/space/${id}`, data
 export const changeSpaceStatus = (id, status) => request.put(`/safety/space/${id}/status`, { status })
 export const getSpaceQrToken = (id) => request.get(`/safety/space/${id}/qr-token`)
 export const resetSpaceQrToken = (id) => request.post(`/safety/space/${id}/qr-token/reset`)
+// 演示模式：登录页的演示账号、顶部提示（不用登录）
+export const demoInfo = () => request.get('/public/demo')
 export const scanSpace = (token) => request.get(`/public/space/${token}`)
 // 作业票打印（A4 票面 + 签名 + 验真二维码）、扫纸质票上的二维码验真（不用登录）
 export const printTicket = (id) => request.get(`/ticket/${id}/print`)

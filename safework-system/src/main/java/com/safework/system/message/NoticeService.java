@@ -1,5 +1,6 @@
 package com.safework.system.message;
 
+import com.safework.system.demo.DemoGuard;
 import com.safework.system.mapper.SysNoticeMapper;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -24,6 +25,7 @@ public class NoticeService {
     private final SysNoticeMapper noticeMapper;
     private final MessageService messageService;
     private final UserService userService;
+    private final DemoGuard demoGuard;
 
     public Page<SysNotice> page(long current, long size, String keyword) {
         return noticeMapper.selectPage(new Page<>(current, size), Wrappers.<SysNotice>lambdaQuery()
@@ -41,6 +43,8 @@ public class NoticeService {
 
     @Transactional(rollbackFor = Exception.class)
     public Long publish(NoticeSaveDTO dto) {
+        // 演示企业不能发全员公告（接口和 AI 智能体的“发布公告”都走这里）
+        demoGuard.forbid("发布全员通知公告");
         List<Long> receivers = userService.listAllActiveIds();
         SysNotice n = new SysNotice();
         n.setTitle(dto.getTitle().trim());

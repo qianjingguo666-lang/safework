@@ -121,6 +121,21 @@ safework:
     read-message-days: 90
     job-log-days: 30
 
+  # ============ 演示模式 ============
+  # 把演示站地址公开给别人自测时打开（DEMO_MODE=true）：演示企业禁止改密码、停用账号、发全员公告等，
+  # AI 按企业每天限额；数据每天由服务器上的 demo-reset.sh 恢复（见 docs/deploy.md）
+  demo:
+    enabled: ${DEMO_MODE:false}
+    tenant-codes: [demo, test]
+    ai-daily-limit: ${DEMO_AI_DAILY_LIMIT:200}
+    reset-time: "04:00"
+    password: admin123
+    accounts:
+      - { label: 企业管理员, tenant-code: demo, username: admin, tip: 看全部功能：数据看板、审批流程配置、AI 知识库 }
+      - { label: 安全员, tenant-code: demo, username: zhangsan, tip: 审批作业票、指派和验收隐患、AI 预审 }
+      - { label: 作业负责人, tenant-code: demo, username: lisi, tip: 申请作业票（手写签名）、语音上报隐患 }
+      - { label: 监护人, tenant-code: demo, username: zhaoliu, tip: 现场复测气体、签名开工和完工 }
+
 # ============ AI 助手 ============
 # 不配置 api-key 也能运行：没有对话模型时只返回检索到的原文；没有向量模型时只用关键词检索
   ai:

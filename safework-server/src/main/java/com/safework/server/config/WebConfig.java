@@ -10,6 +10,7 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
+import com.safework.system.demo.DemoInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -36,9 +37,11 @@ public class WebConfig implements WebMvcConfigurer {
     );
 
     private final TenantInterceptor tenantInterceptor;
+    private final DemoInterceptor demoInterceptor;
 
-    public WebConfig(TenantInterceptor tenantInterceptor) {
+    public WebConfig(TenantInterceptor tenantInterceptor, DemoInterceptor demoInterceptor) {
         this.tenantInterceptor = tenantInterceptor;
+        this.demoInterceptor = demoInterceptor;
     }
 
     @Override
@@ -58,6 +61,9 @@ public class WebConfig implements WebMvcConfigurer {
                 })
                 .addPathPatterns("/**")
                 .excludePathPatterns(WHITE_LIST);
+
+        // 3. 演示模式：演示企业的账号谁都能登录，禁止改密码、停用账号、发全员公告等会影响其他访客的操作
+        registry.addInterceptor(demoInterceptor).addPathPatterns("/**").excludePathPatterns(WHITE_LIST);
     }
 
     /**

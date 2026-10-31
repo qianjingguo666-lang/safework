@@ -25,6 +25,7 @@
 | 3 | AI 智能体（Function Calling：自主调用查询工具，权限内只读） | ✅ 完成 |
 | 3 | 安全培训考试（题库、随机组卷、自动阅卷、成绩统计）+ AI 根据制度出题 | ✅ 完成 |
 | 3 | 语音智能上报隐患（讯飞语音听写 + 大模型提取隐患信息填表，人工核对后提交） | ✅ 完成 |
+| 4 | 演示模式：公开演示站限制危险操作、AI 按企业每日限额、每天自动恢复数据 | ✅ 完成 |
 | 4 | Docker 部署（多阶段构建、Nginx 反向代理、一键发布、数据库备份） | ✅ 完成 |
 | 4 | 工程规范：Flyway 数据库版本管理、接口文档、单元测试、traceId 链路日志、GitHub Actions CI | ✅ 完成 |
 | 4 | 域名 + HTTPS | 下一步 |
@@ -75,7 +76,8 @@ safework
 ├── test-risk.ps1     风险分级管控（LEC 定级、巡检、转隐患、提醒）自测脚本
 ├── test-approval.ps1 可配置审批流（多级、会签、驳回重提、流程快照）自测脚本
 ├── test-voice.ps1    语音智能上报隐患（提取、空间匹配、租户隔离、语音识别）自测脚本
-└── test-print.ps1    作业票手写签名、打印、扫码验真自测脚本
+├── test-print.ps1    作业票手写签名、打印、扫码验真自测脚本
+└── test-demo.ps1     演示模式（禁止危险操作、AI 每日限额）自测脚本
 ```
 
 采用**模块化单体**：业务按 Maven 模块划分、边界清晰，但只部署一个进程，适合 2 核 4G 的个人服务器。后续需要时可以把 AI 模块单独拆成服务。
@@ -504,6 +506,18 @@ notepad config\secret.yml
 - 语音听写（可选）：讯飞开放平台 → 控制台 → 创建应用 → 语音听写（流式版），把 **APPID、APIKey、APISecret** 填到 `asr.app-id`、`asr.api-key`、`asr.api-secret`（新用户有免费调用量）
 - `config/secret.yml` 已加入 `.gitignore`，不会提交到 GitHub
 
+## 演示模式（公开演示站）
+
+把演示站地址发给别人自测时，所有人共用演示账号。不加限制的话，一个人改了密码、停用了账号或者发了一条全员公告，后面的人就没法用了，大模型余额也可能被刷光。打开演示模式（`DEMO_MODE=true`）后：
+
+| 措施 | 做法 |
+|---|---|
+| 禁止影响他人的操作 | `DemoInterceptor` 按接口地址拦截：改密码、员工账号（新增 / 重置密码 / 停用 / 分配角色）、角色权限、部门、全员公告、强制下线、知识库上传删除、批量导入。规则集中在 `DemoRules`（有单元测试）；AI 智能体发布公告走的是 `NoticeService`，在服务里也检查一次 |
+| 只限制演示企业 | `DemoGuard` 判断“演示模式已打开 + 当前用户属于演示企业（demo、test）”，平台管理员和其他正式企业不受影响，同一套代码既是演示站也能正常使用 |
+| AI 按企业每天限额 | 大家共用账号，按人限流不够：`AiRateLimiter` 再按“企业 + 日期”计数（Redis），超过 `DEMO_AI_DAILY_LIMIT` 提示明天再来 |
+| 每天自动恢复数据 | 服务器上 `demo-baseline.sh` 保存一份干净数据（数据库 + 上传文件），定时任务每天 04:00 运行 `demo-reset.sh`：停后端 → 恢复数据库和文件 → 清空 Redis → 启动后端（Flyway 自动补上基线之后新增的数据库版本） |
+| 登录页展示账号 | `/public/demo` 返回演示账号（不含平台管理员），点一下自动填写；登录后顶部提示“这是公开的演示环境”，演示账号不显示修改密码 |
+
 ## 前端设计
 
 - **动态路由**：登录后调用 `/auth/me`，根据后端返回菜单的 `component` 字段，通过 `import.meta.glob` 找到页面组件并 `router.addRoute` 注册；没有权限的页面根本不会注册，直接访问显示 404
@@ -548,6 +562,7 @@ notepad config\secret.yml
 | POST | /ticket/{id}/submit、cancel | 提交审批 / 取消 | ticket:add + 申请人 |
 | POST | /ticket/{id}/approve、reject | 同意 / 驳回（多级审批时只有当前节点的审批人可以操作） | ticket:approve + 当前节点审批人 |
 | GET | /ticket/{id}/print | 打印数据（详情 + 每一步的手写签名 + 验真码） | ticket:list |
+| GET | /public/demo | 演示信息：是否演示站、演示账号（匿名） | 否 |
 | GET | /public/ticket/{token} | 扫纸质作业票上的二维码验真（匿名） | 否 |
 | GET | /ticket/flow | 三种作业类型的审批流程（含每个节点现在的审批人） | ticket:flow:edit |
 | GET | /ticket/flow/candidates | 可以设为审批人的员工 | ticket:flow:edit |
@@ -649,6 +664,8 @@ powershell -ExecutionPolicy Bypass -File .\test-risk.ps1
 powershell -ExecutionPolicy Bypass -File .\test-approval.ps1
 powershell -ExecutionPolicy Bypass -File .\test-voice.ps1
 powershell -ExecutionPolicy Bypass -File .\test-print.ps1
+# 演示模式要用演示参数启动后端，见脚本开头的说明
+powershell -ExecutionPolicy Bypass -File .\test-demo.ps1
 ```
 
 数据库表结构由 Flyway 在后端启动时自动升级，不需要手动执行 SQL。

@@ -78,13 +78,14 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item disabled>角色：{{ roleText }}</el-dropdown-item>
-              <el-dropdown-item command="password" divided>修改密码</el-dropdown-item>
+              <el-dropdown-item v-if="!demoTip" command="password" divided>修改密码</el-dropdown-item>
               <el-dropdown-item command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </el-header>
       <el-main class="main">
+        <el-alert v-if="demoTip" :title="demoTip" type="info" show-icon :closable="true" class="expire-alert" />
         <el-alert v-if="expireWarning" :title="expireWarning" type="warning" show-icon :closable="true" class="expire-alert" />
         <router-view />
       </el-main>
@@ -109,7 +110,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { changePassword, readAllMessages } from '@/api'
+import { changePassword, demoInfo, readAllMessages } from '@/api'
 import { CATEGORY, useMessageStore } from '@/stores/message'
 import { ROLE_NAMES } from '@/utils/dict'
 
@@ -161,9 +162,20 @@ const tenantTip = computed(() => {
 })
 // 30 天内到期提醒续费
 const expireWarning = computed(() => {
+  // 演示站的演示企业不提醒续费（每天恢复数据时会自动顺延到期时间）
+  if (demoTip.value) return ''
   const d = store.tenant?.daysLeft
   if (d == null || d > 30) return ''
   return d <= 0 ? '企业服务今天到期，请尽快联系平台续费' : `企业服务还有 ${d} 天到期（${store.tenant.expireTime.slice(0, 10)}），请及时联系平台续费`
+})
+
+// 演示站：演示企业的用户顶部提示（平台管理员和正式企业不显示）
+const demo = ref(null)
+demoInfo().then((d) => (demo.value = d)).catch(() => {})
+const demoTip = computed(() => {
+  const d = demo.value
+  if (!d?.enabled || store.isPlatform || !d.tenantCodes?.includes(store.tenant?.tenantCode)) return ''
+  return `这是公开的演示环境，大家共用演示账号，数据每天 ${d.resetTime} 自动恢复；改密码、员工账号、全员公告等操作已关闭，AI 每天限 ${d.aiDailyLimit} 次`
 })
 
 const roleText = computed(() => store.isPlatform ? '平台管理员' : (store.roles.map((r) => ROLE_NAMES[r] || r).join('、') || '无'))

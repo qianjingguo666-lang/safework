@@ -30,10 +30,18 @@
         </el-form-item>
         <el-button type="primary" class="submit" :loading="loading" @click="onSubmit">登 录</el-button>
       </el-form>
-      <div class="demo">
-        <div class="demo-title">演示账号（密码均为 admin123）</div>
+      <div v-if="demo.accounts.length" class="demo">
+        <div class="demo-title">
+          {{ demo.enabled ? '演示账号，点一下自动填写' : '演示账号' }}（企业编码在账号前面，密码都是 {{ demo.password }}）
+        </div>
         <div class="demo-list">
-          <el-link v-for="a in demoAccounts" :key="a.label" type="primary" @click="fill(a)">{{ a.label }}</el-link>
+          <div v-for="a in demo.accounts" :key="a.tenantCode + a.username" class="demo-item" @click="fill(a)">
+            <div><b>{{ a.label }}</b><span class="acc">{{ a.tenantCode }} / {{ a.username }}</span></div>
+            <div v-if="a.tip" class="tip">{{ a.tip }}</div>
+          </div>
+        </div>
+        <div v-if="demo.enabled" class="demo-note">
+          这是公开的演示站：大家共用这些账号，数据每天 {{ demo.resetTime }} 自动恢复；改密码、员工账号、全员公告等操作已关闭
         </div>
       </div>
     </el-card>
@@ -45,7 +53,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { getCaptcha } from '@/api'
+import { demoInfo, getCaptcha } from '@/api'
 
 const LAST_TENANT_KEY = 'safework_last_tenant'
 function lastTenant() {
@@ -64,13 +72,15 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
-const demoAccounts = [
-  { label: '企业管理员', tenant: 'demo', username: 'admin' },
-  { label: '安全员', tenant: 'demo', username: 'zhangsan' },
-  { label: '作业负责人', tenant: 'demo', username: 'lisi' },
-  { label: '监护人', tenant: 'demo', username: 'zhaoliu' },
-  { label: '平台管理员', tenant: 'platform', username: 'admin' }
-]
+// 演示账号由后端配置（application.yml 的 safework.demo）：演示站和开发环境才返回，正式环境不显示
+const demo = reactive({ enabled: false, accounts: [], password: '', resetTime: '' })
+async function loadDemo() {
+  try {
+    Object.assign(demo, await demoInfo())
+  } catch {
+    demo.accounts = []
+  }
+}
 
 // 验证码：后端关闭验证码时 enabled = false，不显示输入框
 const captcha = reactive({ enabled: true, image: '' })
@@ -87,9 +97,9 @@ async function refreshCaptcha() {
 }
 
 function fill(a) {
-  form.tenantCode = a.tenant
+  form.tenantCode = a.tenantCode
   form.username = a.username
-  form.password = 'admin123'
+  form.password = demo.password
 }
 
 async function onSubmit() {
@@ -108,7 +118,10 @@ async function onSubmit() {
   }
 }
 
-onMounted(refreshCaptcha)
+onMounted(() => {
+  refreshCaptcha()
+  loadDemo()
+})
 </script>
 
 <style scoped>
@@ -129,7 +142,14 @@ onMounted(refreshCaptcha)
 .captcha-img { width: 120px; height: 40px; border-radius: 4px; cursor: pointer; flex-shrink: 0; border: 1px solid #dcdfe6; box-sizing: border-box; }
 .captcha-empty { display: flex; align-items: center; justify-content: center; font-size: 12px; color: #999; }
 .demo { margin-top: 20px; font-size: 13px; color: #888; }
-.demo-list { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.demo-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.demo-item { padding: 6px 8px; border: 1px solid #e4e7ed; border-radius: 6px; cursor: pointer; line-height: 1.5; transition: border-color .15s, background .15s; }
+.demo-item:hover { border-color: #409eff; background: #f4f8ff; }
+.demo-item b { color: #303133; margin-right: 6px; }
+.demo-item .acc { color: #409eff; font-size: 12px; }
+.demo-item .tip { color: #999; font-size: 12px; }
+.demo-note { margin-top: 10px; padding: 6px 8px; background: #fdf6ec; color: #b88230; border-radius: 4px; font-size: 12px; line-height: 1.6; }
+@media (max-width: 420px) { .demo-list { grid-template-columns: 1fr; } }
 @media (max-width: 900px) {
   .intro { display: none; }
 }

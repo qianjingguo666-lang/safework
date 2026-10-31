@@ -86,6 +86,22 @@ bash start.sh
 - 数据卷名称和 `docker-compose.prod.yml` 一样（项目名都是 `safework-prod`），以后换成在服务器上编译也不会丢数据
 - 备份：`bash backup.sh`
 
+### 打开演示模式（把地址公开给别人自测）
+
+```bash
+cd /opt/safework
+grep -q '^DEMO_MODE=' .env && sed -i 's/^DEMO_MODE=.*/DEMO_MODE=true/' .env || echo 'DEMO_MODE=true' >> .env   # 打开演示模式
+bash start.sh                                     # 重启后生效
+# 先用 platform / admin 登录改好平台管理员密码、准备好演示数据，再保存基线：
+bash demo-baseline.sh
+# 每天 04:00 自动恢复
+(crontab -l 2>/dev/null; echo "0 4 * * * cd /opt/safework && bash demo-reset.sh >> demo/reset.log 2>&1") | crontab -
+```
+
+- 恢复会把整个数据库还原成基线：之后再改平台管理员密码、加演示数据，要重新运行 `demo-baseline.sh`
+- 发布新版本不用重新保存基线：恢复后后端启动时 Flyway 会自动执行新增的数据库版本
+- 手动恢复一次：`bash demo-reset.sh`（停机约 1 分钟，所有人需要重新登录）
+
 ## 四、日常运维
 
 | 操作 | 命令 |
