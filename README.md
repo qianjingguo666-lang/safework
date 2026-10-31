@@ -17,6 +17,7 @@
 | 2 | 受限空间台账 + 现场二维码、隐患排查闭环 | ✅ 完成 |
 | 2 | 部门、用户管理完善、操作日志（AOP） | ✅ 完成 |
 | 2 | 风险分级管控（LEC 评估、四色分布、周期巡检、措施失效转隐患）——与隐患排查构成双重预防机制 | ✅ 完成 |
+| 2 | 应急管理：事故快报（按伤亡自动定级）、应急响应状态机、预案库与演练周期预警、AI 匹配预案 | ✅ 完成 |
 | 2 | SaaS 平台端：企业开通、套餐、到期续费、停用 | ✅ 完成 |
 | 2 | 登录安全：图形验证码、失败锁定、登录日志、在线用户强制下线 | ✅ 完成 |
 | 2 | 消息通知（实时推送、待办提醒、通知公告）+ 定时任务（分布式锁、执行记录） | ✅ 完成 |
@@ -77,6 +78,7 @@ safework
 ├── test-approval.ps1 可配置审批流（多级、会签、驳回重提、流程快照）自测脚本
 ├── test-voice.ps1    语音智能上报隐患（提取、空间匹配、租户隔离、语音识别）自测脚本
 ├── test-print.ps1    作业票手写签名、打印、扫码验真自测脚本
+├── test-emergency.ps1 应急管理（快报定级、响应流转、预案、演练、租户隔离）自测脚本
 └── test-demo.ps1     演示模式（禁止危险操作、AI 每日限额）自测脚本
 ```
 
@@ -227,7 +229,25 @@ safework
 - **四色分布**：按位置分组，每个风险点一个色块，逾期的加虚线框，一眼看出哪个区域风险集中、哪些没按时巡检
 - 导出《风险分级管控清单》Excel（含 LEC 分值、管控层级、措施、周期）；智能体新增 search_risk_points 工具，可以问“有哪些重大风险没按时巡检”
 
-## 系统管理
+## 应急管理
+
+风险管控和隐患排查是“防”，应急管理是“防不住之后怎么办”：事故发生后多快能报上来、有没有按预案处置、预案有没有定期演练。
+
+```
+事故快报（任何员工，知道多少报多少）──立即通知安全员
+   ↓ 安全员确认，选择预案（AI 给出匹配建议）
+应急响应中 ──通知应急小组成员到位──  处置记录（时间线，随时追加）
+   ↓ 写事后总结（经过、原因、整改）
+已结束                    （误报可以不启动响应直接结束）
+```
+
+- **先报告，再完善**：快报只有 5 个必填项，事发时间默认现在；提交后安全员立刻收到预警消息
+- **等级不能报低**：按《生产安全事故报告和调查处理条例》的伤亡标准计算最低等级（如重伤 10 人以上至少是较大事故），报低了后端自动调高并在记录里写明；前端实时提示
+- **状态机**：已上报 → 响应中 → 已结束，非法流转由 `EmergencyRules` 统一拒绝；只有安全员能启动、记录、结束；启动人自动成为现场指挥
+- **预案库**：综合预案 / 专项预案 / 现场处置方案，每份预案绑定应急小组成员；启动响应、安排演练都会通知小组成员；停用的预案不能再启动
+- **演练周期预警**：现场处置方案每半年至少演练一次，其他预案每年至少一次；按上次演练时间计算“从未演练 / 逾期 / 30 天内到期 / 正常”，登记演练结果后自动更新
+- **AI 匹配预案**：先按事故类型和描述关键词从本企业预案里粗筛出 3 份候选，再让大模型选一份并摘出首要处置步骤和禁止事项；大模型只能从候选里选（防止编造不存在的预案），没配置大模型时按规则从预案原文里摘取；只是建议，启动哪个由安全员决定
+
 
 - **部门**：树形结构；按部门筛选用户时包含所有下级部门；禁止把部门移到自己的下级下面（防止成环）；有下级或有用户时不能删除
 - **用户**：修改、停用（**立即踢下线**，`StpUtil.logout(userId)`）、重置密码（强制重新登录）、修改自己的密码；列表批量填充部门和角色名称，避免 N+1 查询
@@ -318,6 +338,7 @@ safework
 | V8 | 风险分级管控：风险点、巡检记录表，演示风险点 |
 | V9 | 可配置审批流：审批流程配置表、审批待办表，作业票增加审批轮次 / 当前节点 / 流程快照，演示高处作业两级审批 |
 | V10 | 作业票手写签名表，作业票增加打印验真码 |
+| V11 | 应急管理：应急预案、应急事件、处置记录、应急演练表，菜单和权限，演示预案和演练 |
 
 - 空数据库：从 V1 开始全部执行
 - 以前用 init.sql 建好的库：配置了 `baseline-version: 4`，第一次启动只登记“已经到 V4”，然后执行 V5，**原有数据不动**
@@ -613,6 +634,12 @@ notepad config\secret.yml
 | GET / POST / PUT | /training/exam/page、/training/exam、/{id}/publish、/{id}/close | 考试管理 | training:exam:list、edit |
 | GET | /training/exam/{id}/stats、/records、/export | 成绩统计、答卷、导出 | training:exam:list |
 | GET / POST / PUT | /training/my/exams、/exams/{id}/start、/record/{id}/answers、/submit、/result | 我的考试：开始、保存、交卷、成绩 | training:my |
+| POST | /safety/emergency | 事故快报 | emergency:event:report |
+| GET | /safety/emergency/page、/overview、/{id} | 应急事件列表 / 概览 / 详情（含处置记录、可执行操作） | emergency:event:list |
+| POST | /safety/emergency/{id}/start、/log、/close | 启动响应 / 处置记录 / 结束 | emergency:event:handle |
+| POST | /ai/emergency/{id}/advise | AI 匹配应急预案、首要处置步骤 | emergency:event:list |
+| GET / POST / PUT | /safety/emergency/plan/list、/plan、/plan/{id}、/plan/{id}/status | 应急预案 列表 / 新增 / 修改 / 启停 | emergency:plan:list、edit |
+| GET / POST | /safety/emergency/drill/list、/drill、/drill/{id}/complete、/cancel | 应急演练 安排 / 登记结果 / 取消 | emergency:plan:list、edit |
 | GET | /actuator/health | 健康检查 | 否 |
 
 完整接口和参数见在线文档：http://localhost:8080/swagger-ui.html（开发环境）
@@ -664,6 +691,7 @@ powershell -ExecutionPolicy Bypass -File .\test-risk.ps1
 powershell -ExecutionPolicy Bypass -File .\test-approval.ps1
 powershell -ExecutionPolicy Bypass -File .\test-voice.ps1
 powershell -ExecutionPolicy Bypass -File .\test-print.ps1
+powershell -ExecutionPolicy Bypass -File .\test-emergency.ps1
 # 演示模式要用演示参数启动后端，见脚本开头的说明
 powershell -ExecutionPolicy Bypass -File .\test-demo.ps1
 ```

@@ -22,6 +22,8 @@ public class DemoController {
         DemoProperties p = guard.props();
         boolean show = p.isEnabled() || p.isShowAccounts();
         return R.ok(new DemoInfoVO(p.isEnabled(), p.isEnabled() ? p.getTenantCodes() : List.of(), p.getResetTime(), p.getAiDailyLimit(),
-                show ? p.getPassword() : null, !show ? List.of() : p.isEnabled() ? p.getAccounts().stream().filter(a -> !"platform".equals(a.getTenantCode())).toList() : p.getAccounts()));
+                show ? p.getPassword() : null,
+                // 演示站绝不列出平台管理员账号（开发环境的配置里有，打开演示模式时也要过滤掉）
+                !show ? List.of() : p.isEnabled() ? p.getAccounts().stream().filter(a -> !"platform".equals(a.getTenantCode())).toList() : p.getAccounts()));
     }
 }

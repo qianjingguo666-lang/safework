@@ -101,3 +101,33 @@ export const CHECK_STATES = {
   TODAY: { label: '今天到期', type: 'warning' },
   UPCOMING: { label: '未到期', type: 'info' }
 }
+
+// ============ 应急管理 ============
+export const ACCIDENT_TYPES = {
+  FIRE_EXPLOSION: '火灾爆炸', POISONING: '中毒窒息', LEAK: '危化品泄漏', FALL: '高处坠落', ELECTRIC: '触电', MECHANICAL: '机械伤害', OTHER: '其他'
+}
+export const EMERGENCY_LEVELS = {
+  GENERAL: { label: '一般事故', type: 'warning' },
+  LARGER: { label: '较大事故', type: 'danger' },
+  MAJOR: { label: '重大事故', type: 'danger' },
+  EXTRA: { label: '特别重大事故', type: 'danger' }
+}
+export const EMERGENCY_STATUS = {
+  REPORTED: { label: '已上报', type: 'warning' },
+  RESPONDING: { label: '响应中', type: 'danger' },
+  CLOSED: { label: '已结束', type: 'info' }
+}
+export const EMERGENCY_LOG_ACTIONS = { REPORT: '事故快报', START: '启动应急响应', UPDATE: '处置记录', CLOSE: '结束' }
+export const PLAN_TYPES = { COMPREHENSIVE: '综合应急预案', SPECIAL: '专项应急预案', ONSITE: '现场处置方案' }
+export const DRILL_STATES = {
+  NEVER: { label: '从未演练', type: 'danger' },
+  OVERDUE: { label: '演练逾期', type: 'danger' },
+  DUE_SOON: { label: '即将到期', type: 'warning' },
+  OK: { label: '正常', type: 'success' }
+}
+export const DRILL_STATUS = {
+  PLANNED: { label: '计划中', type: 'primary' },
+  DONE: { label: '已完成', type: 'success' },
+  CANCELLED: { label: '已取消', type: 'info' }
+}
+export const DRILL_TYPES = { TABLETOP: '桌面推演', LIVE: '实战演练' }

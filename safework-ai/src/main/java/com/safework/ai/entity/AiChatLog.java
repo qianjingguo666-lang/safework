@@ -21,6 +21,8 @@ public class AiChatLog {
     public static final String ASR = "ASR";
     /** 一句话提取隐患 */
     public static final String HAZARD = "HAZARD";
+    /** 应急处置建议 */
+    public static final String EMERGENCY = "EMERGENCY";
 
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;

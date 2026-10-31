@@ -54,7 +54,7 @@ CopyLf 'deploy/release/web/Dockerfile' "$out/web/Dockerfile"
 CopyLf 'safework-web/nginx.conf' "$out/web/nginx.conf"
 # .env.example：2G 内存服务器把后端堆内存调小一点
 $envText = [IO.File]::ReadAllText((Join-Path $root '.env.example'), [Text.Encoding]::UTF8).Replace("`r`n", "`n")
-$envText = $envText -replace 'JAVA_OPTS=.*', 'JAVA_OPTS=-Xms256m -Xmx448m -XX:+UseG1GC -XX:MaxMetaspaceSize=192m'
+$envText = $envText -replace 'JAVA_OPTS=.*', 'JAVA_OPTS="-Xms256m -Xmx448m -XX:+UseG1GC -XX:MaxMetaspaceSize=192m"'
 [IO.File]::WriteAllText("$out/.env.example", $envText, $utf8)
 Copy-Item $jar "$out/backend/app.jar"
 Copy-Item $dist "$out/web/dist" -Recurse

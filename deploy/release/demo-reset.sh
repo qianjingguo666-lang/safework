@@ -5,7 +5,11 @@
 # 大约停机 1 分钟：先停后端，恢复完再启动；启动时 Flyway 会自动执行基线之后新增的数据库版本
 set -e
 cd "$(dirname "$0")"
-source .env
+# 只读取需要的配置，不用 source .env：.env 里 JAVA_OPTS 这类带空格的值会被 bash 当成命令执行
+env_get() { grep -E "^$1=" .env | tail -1 | cut -d= -f2- | sed -E 's/^["'"'"'](.*)["'"'"']$/\1/'; }
+MYSQL_ROOT_PASSWORD=$(env_get MYSQL_ROOT_PASSWORD)
+REDIS_PASSWORD=$(env_get REDIS_PASSWORD)
+WEB_PORT=$(env_get WEB_PORT)
 [ -f demo/baseline.sql.gz ] || { echo "缺少 demo/baseline.sql.gz：先运行 bash demo-baseline.sh"; exit 1; }
 # 密码用环境变量 MYSQL_PWD 传给容器，不会出现“命令行里写密码不安全”的警告
 MYSQL="docker compose exec -T -e MYSQL_PWD=$MYSQL_ROOT_PASSWORD mysql mysql -uroot --default-character-set=utf8mb4"

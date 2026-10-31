@@ -4,7 +4,9 @@
 # 什么时候运行：第一次部署、改好平台管理员密码、准备好演示数据（比如上传了知识库文件）之后
 set -e
 cd "$(dirname "$0")"
-source .env
+# 只读取需要的配置，不用 source .env：.env 里 JAVA_OPTS 这类带空格的值会被 bash 当成命令执行
+env_get() { grep -E "^$1=" .env | tail -1 | cut -d= -f2- | sed -E 's/^["'"'"'](.*)["'"'"']$/\1/'; }
+MYSQL_ROOT_PASSWORD=$(env_get MYSQL_ROOT_PASSWORD)
 mkdir -p demo
 echo "== 1. 备份数据库 =="
 docker compose exec -T -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql mysqldump -uroot --single-transaction --routines \

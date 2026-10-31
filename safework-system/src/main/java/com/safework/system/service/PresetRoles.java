@@ -13,13 +13,13 @@ final class PresetRoles {
 
     static final List<Preset> ALL = List.of(
             new Preset("safety", "安全员", 2, "审批作业票，指派、验收隐患，管理知识库，查看数据看板",
-                    List.of(2L, 200L, 2002L, 2003L, 2004L, 3L, 300L, 3003L, 301L, 3011L, 3012L, 3013L, 302L, 3021L, 303L,
+                    List.of(2L, 200L, 2002L, 2003L, 2004L, 3L, 300L, 3003L, 301L, 3011L, 3012L, 3013L, 302L, 3021L, 303L, 304L, 3041L, 3042L, 305L, 3051L,
                             4L, 400L, 401L, 4011L, 4012L, 402L, 6L,
                             7L, 700L, 701L, 7011L, 7012L, 702L, 7021L)),
-            new Preset("leader", "作业负责人", 3, "申请作业票，上报隐患",
-                    List.of(2L, 200L, 2001L, 3L, 300L, 301L, 3011L, 303L, 4L, 400L, 402L, 7L, 700L)),
-            new Preset("guardian", "监护人", 4, "现场监护，查看作业票，上报隐患",
-                    List.of(2L, 200L, 3L, 300L, 301L, 3011L, 303L, 4L, 400L, 402L, 7L, 700L))
+            new Preset("leader", "作业负责人", 3, "申请作业票，上报隐患，事故快报",
+                    List.of(2L, 200L, 2001L, 3L, 300L, 301L, 3011L, 303L, 304L, 3041L, 305L, 4L, 400L, 402L, 7L, 700L)),
+            new Preset("guardian", "监护人", 4, "现场监护，查看作业票，上报隐患，事故快报",
+                    List.of(2L, 200L, 3L, 300L, 301L, 3011L, 303L, 304L, 3041L, 305L, 4L, 400L, 402L, 7L, 700L))
     );
 
     private PresetRoles() {
