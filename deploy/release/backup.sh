@@ -10,7 +10,8 @@ env_get() { grep -E "^$1=" .env | tail -1 | cut -d= -f2- | sed -E 's/^["'"'"'](.
 MYSQL_ROOT_PASSWORD=$(env_get MYSQL_ROOT_PASSWORD)
 mkdir -p backups
 FILE="backups/safework-$(date +%Y%m%d-%H%M%S).sql.gz"
+# </dev/null：docker compose exec 会读取标准输入，一次粘贴多行命令时，后面几行会被它“吃掉”不执行
 docker compose exec -T mysql \
-  mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --default-character-set=utf8mb4 safework | gzip > "$FILE"
+  mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --default-character-set=utf8mb4 safework </dev/null | gzip > "$FILE"
 find backups -name 'safework-*.sql.gz' -mtime +7 -delete
 echo "备份完成：$FILE"

@@ -10,7 +10,7 @@ MYSQL_ROOT_PASSWORD=$(env_get MYSQL_ROOT_PASSWORD)
 mkdir -p demo
 echo "== 1. 备份数据库 =="
 docker compose exec -T -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql mysqldump -uroot --single-transaction --routines \
-  --default-character-set=utf8mb4 safework | gzip > demo/baseline.sql.gz.tmp
+  --default-character-set=utf8mb4 safework </dev/null | gzip > demo/baseline.sql.gz.tmp
 mv demo/baseline.sql.gz.tmp demo/baseline.sql.gz
 echo "== 2. 备份上传的文件（附件、知识库原文件） =="
 docker compose run --rm --no-deps -T -v "$PWD/demo:/backup" --entrypoint sh backend \

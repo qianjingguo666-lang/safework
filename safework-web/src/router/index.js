@@ -37,7 +37,10 @@ function addDynamicRoutes(menus) {
   const walk = (list) => list.forEach((m) => {
     if (m.menuType === 'C' && m.component) {
       const loader = views[`../views/${m.component}.vue`]
-      if (loader) {
+      if (loader && m.component.startsWith('screen/')) {
+        // 大屏：全屏显示，不放在布局里（没有侧边栏、顶栏）
+        router.addRoute({ path: m.path, component: loader, meta: { title: m.menuName, perm: m.perms } })
+      } else if (loader) {
         router.addRoute('Layout', { path: m.path, component: loader, meta: { title: m.menuName, perm: m.perms } })
       } else {
         console.warn(`菜单【${m.menuName}】的组件不存在：${m.component}`)

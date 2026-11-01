@@ -56,9 +56,9 @@ public class DashboardService {
         // ---------- 作业票 ----------
         Map<String, Map<LocalDate, Long>> byType = new HashMap<>();
         for (Map<String, Object> row : ticketMapper.selectMaps(new QueryWrapper<WorkTicket>()
-                .select("DATE(create_time) AS d", "ticket_type AS t", "COUNT(*) AS c")
+                .select("DATE_FORMAT(create_time, '%Y-%m-%d') AS d", "ticket_type AS t", "COUNT(*) AS c")
                 .ge("create_time", since)
-                .groupBy("DATE(create_time)", "ticket_type"))) {
+                .groupBy("d", "ticket_type"))) {
             byType.computeIfAbsent(str(row.get("t")), k -> new HashMap<>()).put(date(row.get("d")), num(row.get("c")));
         }
         long ticketTotal = 0;
@@ -91,17 +91,17 @@ public class DashboardService {
         // ---------- 隐患 ----------
         Map<LocalDate, Long> reported = new HashMap<>();
         for (Map<String, Object> row : hazardMapper.selectMaps(new QueryWrapper<Hazard>()
-                .select("DATE(create_time) AS d", "COUNT(*) AS c")
+                .select("DATE_FORMAT(create_time, '%Y-%m-%d') AS d", "COUNT(*) AS c")
                 .ge("create_time", since)
-                .groupBy("DATE(create_time)"))) {
+                .groupBy("d"))) {
             reported.put(date(row.get("d")), num(row.get("c")));
         }
         Map<LocalDate, Long> closed = new HashMap<>();
         for (Map<String, Object> row : hazardMapper.selectMaps(new QueryWrapper<Hazard>()
-                .select("DATE(verify_time) AS d", "COUNT(*) AS c")
+                .select("DATE_FORMAT(verify_time, '%Y-%m-%d') AS d", "COUNT(*) AS c")
                 .eq("status", HazardStatus.CLOSED.name())
                 .ge("verify_time", since)
-                .groupBy("DATE(verify_time)"))) {
+                .groupBy("d"))) {
             closed.put(date(row.get("d")), num(row.get("c")));
         }
         vo.setHazardReported(fill(dayList, reported));
@@ -166,6 +166,7 @@ public class DashboardService {
     }
 
     /** JDBC 驱动返回的 DATE 可能是 java.sql.Date 或 LocalDate，toString 都是 yyyy-MM-dd */
+    /** 日期在 SQL 里用 DATE_FORMAT 转成字符串，避免驱动按时区换算 DATE 类型导致差一天 */
     private static LocalDate date(Object v) {
         return v == null ? null : LocalDate.parse(v.toString().substring(0, 10));
     }

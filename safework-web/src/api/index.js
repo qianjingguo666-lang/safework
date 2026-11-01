@@ -239,3 +239,6 @@ export const equipmentDetail = (id) => request.get(`/safety/equipment/${id}`)
 export const saveEquipment = (id, data) => (id ? request.put(`/safety/equipment/${id}`, data) : request.post('/safety/equipment', data))
 export const equipmentStatus = (id, status, reason) => request.put(`/safety/equipment/${id}/status`, { status, reason })
 export const inspectEquipment = (id, data) => request.post(`/safety/equipment/${id}/inspection`, data)
+
+// 安全数据大屏
+export const screenOverview = () => request.get('/screen/overview')

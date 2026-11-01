@@ -49,6 +49,7 @@ CopyLf 'deploy/release/backup.sh' "$out/backup.sh"
 CopyLf 'deploy/release/server-init.sh' "$out/server-init.sh"
 CopyLf 'deploy/release/demo-baseline.sh' "$out/demo-baseline.sh"
 CopyLf 'deploy/release/demo-reset.sh' "$out/demo-reset.sh"
+CopyLf 'deploy/release/update.sh' "$out/update.sh"
 CopyLf 'deploy/release/backend/Dockerfile' "$out/backend/Dockerfile"
 CopyLf 'deploy/release/web/Dockerfile' "$out/web/Dockerfile"
 CopyLf 'safework-web/nginx.conf' "$out/web/nginx.conf"
@@ -70,3 +71,4 @@ Write-Host ''
 Write-Host "发布包：$tarFile（$size MB）" -ForegroundColor Green
 Write-Host '下一步上传到服务器：' -ForegroundColor Green
 Write-Host "  scp `"$tarFile`" root@服务器IP:/root/"
+Write-Host '再登录服务器运行：cd /opt/safework && bash update.sh' -ForegroundColor Green
