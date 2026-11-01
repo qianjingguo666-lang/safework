@@ -74,7 +74,7 @@ Check '最近动态第一条就是这条隐患' (@($d2.feed)[0].text -like "*$ti
 $before = [int]((@($d.hazardTrend.reported) | Measure-Object -Sum).Sum)
 $after = [int]((@($d2.hazardTrend.reported) | Measure-Object -Sum).Sum)
 $lastDay = @($d2.hazardTrend.dates)[-1]
-Check "近 14 天上报总数 $before  $after（今天 $lastDay：$(@($d.hazardTrend.reported)[-1])  $(@($d2.hazardTrend.reported)[-1])）" ($after -eq $before + 1)
+Check "近 14 天上报总数 $before → $after（今天 $lastDay：$(@($d.hazardTrend.reported)[-1]) → $(@($d2.hazardTrend.reported)[-1])）" ($after -eq $before + 1)
 Call POST "/safety/hazard/$hid/revoke" @{ comment = '测试清理' } $tZhang | Out-Null
 
 Title '4. 租户隔离'

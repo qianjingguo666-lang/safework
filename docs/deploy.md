@@ -87,6 +87,18 @@ bash start.sh
 - 数据卷名称和 `docker-compose.prod.yml` 一样（项目名都是 `safework-prod`），以后换成在服务器上编译也不会丢数据
 - 备份：`bash backup.sh`
 
+### 看门狗：出问题推送到微信
+
+`watchdog.sh` 每 2 分钟检查一次：网站首页、后端健康检查、4 个容器、磁盘（超过 85%）、内存、数据库备份（超过 26 小时没备份）、演示数据恢复。出问题推送到微信（Server酱）；后端连续 2 次不通会先自动重启一次（30 分钟内最多一次）。同一个问题 60 分钟才重复提醒一次，恢复正常推一条，每天 9 点推一条日报。正在运行 update.sh / start.sh / demo-reset.sh 时自动跳过，不会误报。
+
+```bash
+cd /opt/safework
+nano .env                                  # 加一行 WECHAT_SENDKEY=你的SendKey（不要提交、不要截图）
+bash watchdog.sh test                      # 微信收到测试消息就说明配置好了
+bash watchdog.sh status                    # 只看状态，不推送
+(crontab -l 2>/dev/null; echo "*/2 * * * * cd /opt/safework && bash watchdog.sh >> watchdog/watchdog.log 2>&1") | crontab -
+```
+
 ### 打开演示模式（把地址公开给别人自测）
 
 ```bash
