@@ -164,3 +164,18 @@ export const CONTRACTOR_ACTIONS = {
   BLACKLIST: { label: '列入黑名单', type: 'danger', comment: true },
   LIFT: { label: '解除黑名单', type: 'primary', comment: true }
 }
+
+// 设备设施
+export const EQUIP_CATEGORIES = { SPECIAL: '特种设备', ACCESSORY: '安全附件', DETECTOR: '检测报警仪器', FIRE: '消防设施', OTHER: '其他' }
+export const EQUIP_STATUS = {
+  IN_USE: { label: '在用', type: 'success' },
+  STOPPED: { label: '停用', type: 'warning' },
+  SCRAPPED: { label: '报废', type: 'info' }
+}
+export const EQUIP_STATES = {
+  OVERDUE: { label: '检验逾期', type: 'danger' },
+  DUE_SOON: { label: '即将到期', type: 'warning' },
+  NEVER: { label: '从未检验', type: 'danger' },
+  OK: { label: '正常', type: 'success' },
+  NOT_IN_USE: { label: '-', type: 'info' }
+}

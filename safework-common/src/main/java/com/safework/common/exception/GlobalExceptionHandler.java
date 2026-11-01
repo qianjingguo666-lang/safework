@@ -95,7 +95,25 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public R<Void> handleOther(Exception e) {
+        // 浏览器关闭页面 / 手机锁屏后，往消息推送长连接里写数据会报 Broken pipe：连接已经没了，不算系统异常
+        if (clientGone(e)) {
+            log.debug("客户端已断开：{}", e.getMessage());
+            return null;
+        }
         log.error("系统异常", e);
         return R.fail(500, "系统繁忙，请稍后再试");
+    }
+
+    private static boolean clientGone(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if ("ClientAbortException".equals(t.getClass().getSimpleName())) {
+                return true;
+            }
+            if (t instanceof java.io.IOException && t.getMessage() != null
+                    && (t.getMessage().contains("Broken pipe") || t.getMessage().contains("Connection reset"))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

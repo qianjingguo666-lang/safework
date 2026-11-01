@@ -230,3 +230,12 @@ export const contractorAction = (id, action, comment) => request.post(`/safety/c
 export const saveContractorWorker = (id, workerId, data) => (workerId ? request.put(`/safety/contractor/${id}/worker/${workerId}`, data) : request.post(`/safety/contractor/${id}/worker`, data))
 export const contractorWorkerStatus = (id, workerId, status) => request.put(`/safety/contractor/${id}/worker/${workerId}/status`, { status })
 export const addContractorViolation = (id, data) => request.post(`/safety/contractor/${id}/violation`, data)
+
+// 设备设施
+export const equipmentTypes = () => request.get('/safety/equipment/types')
+export const equipmentPage = (params) => request.get('/safety/equipment/page', { params })
+export const equipmentOverview = () => request.get('/safety/equipment/overview')
+export const equipmentDetail = (id) => request.get(`/safety/equipment/${id}`)
+export const saveEquipment = (id, data) => (id ? request.put(`/safety/equipment/${id}`, data) : request.post('/safety/equipment', data))
+export const equipmentStatus = (id, status, reason) => request.put(`/safety/equipment/${id}/status`, { status, reason })
+export const inspectEquipment = (id, data) => request.post(`/safety/equipment/${id}/inspection`, data)
