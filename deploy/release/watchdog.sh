@@ -67,11 +67,20 @@ main() {
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:${port}/" </dev/null || echo 000)
   [ "$code" = "200" ] || problems+=("网站首页打不开（HTTP $code）")
 
-  health=$(curl -s --max-time 10 "http://127.0.0.1:${port}/api/actuator/health" </dev/null || true)
+  local hcode
+  health=$(curl -s --max-time 10 -w '\n%{http_code}' "http://127.0.0.1:${port}/api/actuator/health" </dev/null || true)
+  hcode=$(echo "$health" | tail -1)
+  health=$(echo "$health" | sed '$d' | tr -d '\r\n' | head -c 200)
+  # 后端停了时 nginx 返回的是 502 错误网页，消息里只写状态码，不放网页代码
+  echo "$health" | grep -qi '<html' && health=""
   local backend_ok=1
   if ! echo "$health" | grep -q '^{"status":"UP"'; then
     backend_ok=0
-    problems+=("后端健康检查不通过：${health:-没有响应}")
+    case "$hcode" in
+      502|504) problems+=("后端没有响应（HTTP $hcode）") ;;
+      000|"")  problems+=("后端没有响应（连接超时）") ;;
+      *)       problems+=("后端健康检查不通过（HTTP $hcode）${health:+：$health}") ;;
+    esac
   fi
 
   local running svc
@@ -107,7 +116,7 @@ main() {
   if [ "$mode" = "status" ]; then
     echo "服务器：$host"
     echo "网站首页：HTTP $code"
-    echo "后端健康：${health:-没有响应}"
+    echo "后端健康：HTTP $hcode ${health}"
     echo "运行中的容器：$(echo $running)"
     echo "磁盘已用：${disk}%   可用内存：${mem} MB"
     echo "最近备份：${latest:-无}"
@@ -140,7 +149,7 @@ main() {
         docker compose up -d </dev/null >/dev/null 2>&1 || true
         docker compose restart backend </dev/null >/dev/null 2>&1 || true
         st_set last_restart "$now"
-        problems+=("已自动重启后端（$(date '+%H:%M')），约 1 分钟后恢复；如果下一条消息还是故障，请登录服务器查看：docker compose logs --tail=100 backend")
+        problems+=("已自动重启后端（$(date '+%H:%M')），恢复后会再推送一条【恢复】；如果 10 分钟内没收到，请登录服务器查看：docker compose logs --tail=100 backend")
       fi
     fi
   fi
