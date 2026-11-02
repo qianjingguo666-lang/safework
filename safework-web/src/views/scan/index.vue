@@ -39,6 +39,8 @@
         </div>
       </div>
 
+      <button class="report-btn" @click="reportHere">发现隐患？拍照上报</button>
+
       <template v-if="s.recentTickets.length">
         <h3>最近完成</h3>
         <div v-for="t in s.recentTickets" :key="t.ticketNo" class="card muted">
@@ -52,11 +54,14 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { scanSpace } from '@/api'
 import { RISK_LEVELS, TICKET_STATUS } from '@/utils/dict'
 
 const route = useRoute()
+const router = useRouter()
+// 上报要登录：没登录会先到登录页，登录后回到上报页，并自动选上这个空间
+const reportHere = () => router.push({ path: '/m/report', query: { space: s.value.spaceCode } })
 const loading = ref(true)
 const error = ref('')
 const s = ref(null)
@@ -100,4 +105,5 @@ h3 { margin: 18px 16px 8px; font-size: 15px; }
 .muted { color: #888; font-size: 13px; }
 .gas { margin-top: 6px; padding: 6px 10px; background: #f0f9eb; border-radius: 4px; color: #2e7d32; font-size: 13px; }
 .foot { text-align: center; color: #aaa; font-size: 12px; margin-top: 24px; }
+.report-btn { display: block; width: 100%; margin: 12px 0; padding: 12px; border: 0; border-radius: 10px; color: #fff; font-size: 16px; background: linear-gradient(135deg, #ff7a45, #f5222d); }
 </style>

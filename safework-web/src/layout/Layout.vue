@@ -78,7 +78,8 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item disabled>角色：{{ roleText }}</el-dropdown-item>
-              <el-dropdown-item v-if="!demoTip" command="password" divided>修改密码</el-dropdown-item>
+              <el-dropdown-item v-if="!store.isPlatform" command="mobile" divided>手机版</el-dropdown-item>
+              <el-dropdown-item v-if="!demoTip" command="password" :divided="store.isPlatform">修改密码</el-dropdown-item>
               <el-dropdown-item command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -113,6 +114,7 @@ import { useUserStore } from '@/stores/user'
 import { changePassword, demoInfo, readAllMessages } from '@/api'
 import { CATEGORY, useMessageStore } from '@/stores/message'
 import { ROLE_NAMES } from '@/utils/dict'
+import { setPreferDesktop } from '@/utils/mobile'
 
 const store = useUserStore()
 const msg = useMessageStore()
@@ -205,6 +207,11 @@ async function onCommand(cmd) {
   if (cmd === 'password') {
     Object.assign(pwd, { oldPassword: '', newPassword: '', confirm: '' })
     pwdVisible.value = true
+    return
+  }
+  if (cmd === 'mobile') {
+    setPreferDesktop(false)
+    router.push('/m')
     return
   }
   if (cmd === 'logout') {

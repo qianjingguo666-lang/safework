@@ -78,7 +78,7 @@ public class TicketService {
                         .like(WorkTicket::getTicketNo, kw).or()
                         .like(WorkTicket::getTitle, kw).or()
                         .like(WorkTicket::getLocation, kw))
-                .and(!viewAll, w -> w
+                .and(!viewAll || Boolean.TRUE.equals(q.getMine()), w -> w
                         .eq(WorkTicket::getApplicantId, me).or()
                         .eq(WorkTicket::getGuardianId, me))
                 // 待我审批：当前节点有我的待办

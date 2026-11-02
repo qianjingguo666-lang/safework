@@ -242,3 +242,6 @@ export const inspectEquipment = (id, data) => request.post(`/safety/equipment/${
 
 // 安全数据大屏
 export const screenOverview = () => request.get('/screen/overview')
+
+// 手机端首页待办数
+export const mobileHome = () => request.get('/mobile/home')

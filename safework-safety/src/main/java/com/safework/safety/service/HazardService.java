@@ -59,6 +59,7 @@ public class HazardService {
                 .eq(StringUtils.hasText(q.getLevel()), Hazard::getLevel, q.getLevel())
                 .eq(overdue, Hazard::getStatus, HazardStatus.RECTIFYING)
                 .lt(overdue, Hazard::getDeadline, LocalDateTime.now())
+                .eq(Boolean.TRUE.equals(q.getMine()), Hazard::getRectifierId, me)
                 .and(!viewAll, w -> w
                         .eq(Hazard::getReporterId, me).or()
                         .eq(Hazard::getRectifierId, me))

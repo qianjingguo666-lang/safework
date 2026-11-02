@@ -14,4 +14,6 @@ public class TicketQueryDTO {
     private String keyword;
     /** true：只看等我审批的 */
     private Boolean todo;
+    /** true：只看我申请的、我监护的（手机端“我的作业”，安全员也只看自己的） */
+    private Boolean mine;
 }
