@@ -2,8 +2,10 @@ package com.safework.ticket.screen;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.safework.safety.check.CheckRules;
 import com.safework.safety.contractor.ContractorRules;
 import com.safework.safety.emergency.EmergencyRules;
+import com.safework.safety.entity.CheckTask;
 import com.safework.safety.entity.Contractor;
 import com.safework.safety.entity.ContractorWorker;
 import com.safework.safety.entity.EmergencyEvent;
@@ -15,6 +17,7 @@ import com.safework.safety.entity.RiskPoint;
 import com.safework.safety.enums.HazardStatus;
 import com.safework.safety.enums.RiskLevel;
 import com.safework.safety.equipment.EquipmentRules;
+import com.safework.safety.mapper.CheckTaskMapper;
 import com.safework.safety.mapper.ContractorMapper;
 import com.safework.safety.mapper.ContractorWorkerMapper;
 import com.safework.safety.mapper.EmergencyEventMapper;
@@ -74,6 +77,7 @@ public class ScreenService {
     private final EquipmentMapper equipmentMapper;
     private final ContractorMapper contractorMapper;
     private final ContractorWorkerMapper workerMapper;
+    private final CheckTaskMapper checkTaskMapper;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -141,6 +145,8 @@ public class ScreenService {
                 .between(PersonCert::getValidUntil, today, soon)), "warning", "/safety/cert");
         add(list, "风险点巡检逾期", riskPointMapper.selectCount(Wrappers.<RiskPoint>lambdaQuery()
                 .eq(RiskPoint::getStatus, 1).lt(RiskPoint::getNextCheckTime, now)), "danger", "/safety/risk");
+        add(list, "安全检查逾期未完成", checkTaskMapper.selectCount(Wrappers.<CheckTask>lambdaQuery()
+                .eq(CheckTask::getStatus, CheckRules.PENDING).lt(CheckTask::getDueDate, today)), "danger", "/safety/check");
         add(list, "承包商黑名单", contractorMapper.selectCount(Wrappers.<Contractor>lambdaQuery()
                 .eq(Contractor::getStatus, ContractorRules.BLACKLISTED)), "warning", "/safety/contractor");
         add(list, "承包商资质 / 保险快到期", contractorMapper.selectCount(Wrappers.<Contractor>lambdaQuery()

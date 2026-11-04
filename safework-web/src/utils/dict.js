@@ -179,3 +179,12 @@ export const EQUIP_STATES = {
   OK: { label: '正常', type: 'success' },
   NOT_IN_USE: { label: '-', type: 'info' }
 }
+
+// 安全检查
+export const CHECK_TYPES = { DAILY: '日常检查', SPECIAL: '专项检查', HOLIDAY: '节假日检查', SEASONAL: '季节性检查', COMPREHENSIVE: '综合检查' }
+export const CHECK_CYCLES = { DAILY: '每天', WEEKLY: '每周', MONTHLY: '每月', ONCE: '一次性' }
+export const CHECK_TASK_STATES = {
+  PENDING: { label: '待检查', type: 'primary' },
+  OVERDUE: { label: '已逾期', type: 'danger' },
+  DONE: { label: '已完成', type: 'success' }
+}

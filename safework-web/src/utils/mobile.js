@@ -27,9 +27,9 @@ export function setPreferDesktop(v) {
 /** 消息里存的是电脑端链接，手机端有对应页面的换成手机端页面 */
 export function mobileLink(link) {
   if (!link) return null
-  const m = link.match(/^\/(ticket\/list|safety\/hazard)\?detail=(\d+)/)
+  const m = link.match(/^\/(ticket\/list|safety\/hazard|safety\/check)\?detail=(\d+)/)
   if (!m) return null
-  return m[1] === 'ticket/list' ? `/m/ticket/${m[2]}` : `/m/hazard/${m[2]}`
+  return { 'ticket/list': `/m/ticket/${m[2]}`, 'safety/hazard': `/m/hazard/${m[2]}`, 'safety/check': `/m/check/${m[2]}` }[m[1]]
 }
 
 /**

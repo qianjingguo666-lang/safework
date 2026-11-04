@@ -12,8 +12,11 @@ package com.safework.ticket.mobile;
  * @param assign         待指派的隐患（安全员）
  * @param verify         待验收的隐患（安全员）
  * @param riskDue        今天到期或已逾期的风险巡检
+ * @param check          我待做的安全检查（含逾期）
+ * @param checkOverdue   其中已逾期的
  * @param unread         未读消息
  */
 public record MobileHomeVO(Integer approve, Integer working, Integer rectify, Integer rectifyOverdue,
-                           Integer assign, Integer verify, Integer riskDue, Integer unread) {
+                           Integer assign, Integer verify, Integer riskDue, Integer check, Integer checkOverdue,
+                           Integer unread) {
 }

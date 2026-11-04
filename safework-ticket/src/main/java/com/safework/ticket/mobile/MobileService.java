@@ -2,6 +2,7 @@ package com.safework.ticket.mobile;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.safework.safety.check.CheckService;
 import com.safework.safety.entity.Hazard;
 import com.safework.safety.entity.RiskPoint;
 import com.safework.safety.enums.HazardStatus;
@@ -38,6 +39,7 @@ public class MobileService {
     private final HazardMapper hazardMapper;
     private final RiskPointMapper riskPointMapper;
     private final MessageService messageService;
+    private final CheckService checkService;
 
     public MobileHomeVO home() {
         Long me = StpUtil.getLoginIdAsLong();
@@ -82,8 +84,12 @@ public class MobileService {
                     .lt(RiskPoint::getNextCheckTime, LocalDate.now().plusDays(1).atStartOfDay()));
         }
 
+        // 安全检查：检查人不一定有菜单（临时安排的人），有分给自己的任务也显示
+        int[] check = checkService.myPending();
+        boolean showCheck = StpUtil.hasPermission(CheckService.PERM_LIST) || check[0] > 0;
+
         return new MobileHomeVO(num(approve), num(working), (int) rectify, (int) rectifyOverdue, num(assign), num(verify), num(riskDue),
-                (int) messageService.unreadCount(me));
+                showCheck ? check[0] : null, showCheck ? check[1] : null, (int) messageService.unreadCount(me));
     }
 
     private static Integer num(Long v) {

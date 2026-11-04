@@ -245,3 +245,16 @@ export const screenOverview = () => request.get('/screen/overview')
 
 // 手机端首页待办数
 export const mobileHome = () => request.get('/mobile/home')
+
+// 安全检查
+export const checkOptions = () => request.get('/safety/check/options')
+export const checkTaskPage = (params) => request.get('/safety/check/task/page', { params })
+export const checkOverview = () => request.get('/safety/check/task/overview')
+export const checkTaskDetail = (id) => request.get(`/safety/check/task/${id}`)
+export const submitCheckTask = (id, data) => request.post(`/safety/check/task/${id}/submit`, data, { timeout: 60000 })
+export const checkTemplates = (enabled) => request.get('/safety/check/template/list', { params: enabled ? { enabled: true } : {} })
+export const saveCheckTemplate = (id, data) => (id ? request.put(`/safety/check/template/${id}`, data) : request.post('/safety/check/template', data))
+export const checkTemplateStatus = (id, status) => request.put(`/safety/check/template/${id}/status`, null, { params: { status } })
+export const checkPlans = () => request.get('/safety/check/plan/list')
+export const saveCheckPlan = (id, data) => (id ? request.put(`/safety/check/plan/${id}`, data) : request.post('/safety/check/plan', data))
+export const checkPlanStatus = (id, status) => request.put(`/safety/check/plan/${id}/status`, null, { params: { status } })

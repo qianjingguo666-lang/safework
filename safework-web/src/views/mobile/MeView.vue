@@ -11,6 +11,7 @@
 
     <div class="m-card menu">
       <router-link v-if="store.hasPerm('training:my')" to="/training/my" class="m-row"><span>我的考试</span><el-icon><ArrowRight /></el-icon></router-link>
+      <router-link to="/m/checks" class="m-row"><span>我的安全检查</span><el-icon><ArrowRight /></el-icon></router-link>
       <router-link v-if="store.hasPerm('risk:check')" to="/safety/risk-check" class="m-row"><span>风险巡检</span><el-icon><ArrowRight /></el-icon></router-link>
       <router-link v-if="store.hasPerm('ai:chat')" to="/ai/chat" class="m-row"><span>AI 安全助手</span><el-icon><ArrowRight /></el-icon></router-link>
       <a class="m-row" @click="toDesktop"><span>切换到电脑版</span><el-icon><Monitor /></el-icon></a>
