@@ -36,7 +36,7 @@
 | 2 | 消息通知（实时推送、待办提醒、通知公告）+ 定时任务（分布式锁、执行记录） | ✅ 完成 |
 | 2 | 附件（隐患现场 / 整改照片、作业票附件）、Excel 导入导出、数据看板（ECharts） | ✅ 完成 |
 | 3 | AI 知识库问答（RAG，流式输出、引用出处）、作业票 AI 预审 | ✅ 完成 |
-| 3 | AI 智能体（Function Calling：自主调用查询工具，权限内只读） | ✅ 完成 |
+| 3 | AI 智能体（Function Calling：13 个查询工具 + 3 个需人工确认的操作，权限内只读） | ✅ 完成 |
 | 3 | 安全培训考试（题库、随机组卷、自动阅卷、成绩统计）+ AI 根据制度出题 | ✅ 完成 |
 | 3 | 语音智能上报隐患（讯飞语音听写 + 大模型提取隐患信息填表，人工核对后提交） | ✅ 完成 |
 | 4 | 演示模式：公开演示站限制危险操作、AI 按企业每日限额、每天自动恢复数据 | ✅ 完成 |
@@ -86,6 +86,7 @@ safework
 ├── test-message.ps1  消息推送、业务通知、公告、定时任务自测脚本
 ├── test-file.ps1     附件权限、Excel 导入导出、数据看板自测脚本
 ├── test-agent.ps1    AI 智能体（工具权限、数据权限、租户隔离、写操作人工确认）自测脚本
+├── test-agent-tools.ps1 智能体新工具（危化品、事故、变更、班前会、责任书）问答自测脚本（需要大模型）
 ├── test-training.ps1 培训考试（组卷、防作弊、阅卷、补考、统计、AI 出题）自测脚本
 ├── test-risk.ps1     风险分级管控（LEC 定级、巡检、转隐患、提醒）自测脚本
 ├── test-approval.ps1 可配置审批流（多级、会签、驳回重提、流程快照）自测脚本
@@ -752,6 +753,11 @@ safework
 | get_safety_overview 查询安全总览 | `DashboardService.overview` | dashboard:view |
 | search_equipment 查询设备设施 | `EquipmentService.page` | equipment:list |
 | search_certs 查询人员资质 | `CertService.page` | cert:list |
+| search_chemicals 查询危险化学品 | `ChemService.stores`（库存、超储、重大危险源 S / R / 等级） | chem:list |
+| search_accidents 查询事故调查 | `AccidentService.page` + 逾期整改措施 | accident:list |
+| search_changes 查询变更管理 | `MocService.page`（todo=true 只查要我处理的） | moc:list |
+| search_shift_meetings 查询班前会 | `MeetingService.teams` + 当天不能上岗的人 | meeting:list |
+| search_responsibility 查询安全生产责任书 | `RespService.mine`（管理员加 `books` 进度） | resp:list |
 | search_regulations 检索安全制度 | `RetrievalService.retrieve`（RAG 作为一个工具） | ai:chat |
 
 - **不越权**：工具直接调用页面用的 Service，租户隔离、数据权限自动生效（监护人通过智能体也只能查到和自己有关的作业票）；用户没有权限的工具**不会发给大模型**，执行时再检查一次，防止模型“猜”出工具名
@@ -1068,6 +1074,7 @@ powershell -ExecutionPolicy Bypass -File .\test-accident.ps1
 powershell -ExecutionPolicy Bypass -File .\test-chem.ps1
 powershell -ExecutionPolicy Bypass -File .\test-moc.ps1
 powershell -ExecutionPolicy Bypass -File .\test-meeting.ps1
+powershell -ExecutionPolicy Bypass -File .\test-agent-tools.ps1
 # 演示模式要用演示参数启动后端，见脚本开头的说明
 powershell -ExecutionPolicy Bypass -File .\test-demo.ps1
 ```

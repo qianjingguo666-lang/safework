@@ -105,6 +105,9 @@ import { postStream } from '@/utils/sse'
 const SAMPLES = [
   '现在有哪些整改中的隐患？哪些已经逾期？',
   '最近 30 天安全情况怎么样？',
+  '罐区现在甲醇有多少？有没有超储？我们有几处重大危险源？',
+  '哪些事故整改措施逾期了？',
+  '我有哪些变更要处理？今天哪些班组还没开班前会？',
   '高风险的受限空间有哪些？进入前要做哪些气体检测？',
   '催办所有已经逾期的隐患',
   '把待指派的隐患指派给李四整改，3 天内完成'
@@ -121,11 +124,13 @@ const VALUE_NAMES = {
   REPORTED: '待指派', RECTIFYING: '整改中', PENDING_VERIFY: '待验收', CLOSED: '已闭环', REVOKED: '已撤销',
   GENERAL: '一般', MAJOR: '重大', HIGH: '高', MEDIUM: '中', LOW: '低',
   DRAFT: '草稿', PENDING: '待审批', APPROVED: '已批准', IN_PROGRESS: '作业中', COMPLETED: '已完成', REJECTED: '已驳回', CANCELLED: '已取消',
-  CONFINED_SPACE: '受限空间', HOT_WORK: '动火', HEIGHT: '高处', true: '是', false: '否'
+  CONFINED_SPACE: '受限空间', HOT_WORK: '动火', HEIGHT: '高处', true: '是', false: '否',
+  INVESTIGATING: '调查中', OVERDUE: '超期', ASSESSING: '风险评估', APPROVING: '待审批', IMPLEMENTING: '实施中', PSSR: '投用前检查'
 }
 const ARG_NAMES = {
   status: '状态', level: '等级', overdue: '逾期', keyword: '关键词', limit: '条数', ticketType: '类型',
-  riskLevel: '风险', spaceType: '空间类型', days: '天数', query: '检索'
+  riskLevel: '风险', spaceType: '空间类型', days: '天数', query: '检索',
+  overstockOnly: '只看超储', state: '状态', todo: '要我处理', date: '日期'
 }
 const status = ref(null)
 const tools = ref([])
