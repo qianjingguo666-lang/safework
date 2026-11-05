@@ -358,3 +358,8 @@ export const myMeetings = () => request.get('/safety/meeting/mine')
 export const holdMeeting = (data) => request.post('/safety/meeting', data)
 export const confirmMeeting = (id) => request.post(`/safety/meeting/${id}/confirm`)
 export const meetingTips = (teamId) => request.post(`/ai/meeting/${teamId}/tips`, null, { timeout: 60000 })
+
+// 安全目标考核
+export const kpiReport = (year) => request.get('/safety/kpi/report', { params: { year } })
+export const kpiTargets = (year) => request.get('/safety/kpi/targets', { params: { year } })
+export const saveKpiTargets = (data) => request.put('/safety/kpi/targets', data)

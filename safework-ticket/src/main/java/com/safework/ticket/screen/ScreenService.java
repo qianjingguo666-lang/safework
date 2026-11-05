@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.safework.safety.check.CheckRules;
 import com.safework.safety.health.HealthRules;
 import com.safework.safety.health.HealthService;
+import com.safework.ticket.kpi.KpiService;
 import com.safework.ticket.resp.RespService;
 import com.safework.safety.accident.AccidentService;
 import com.safework.safety.chem.ChemService;
@@ -101,6 +102,7 @@ public class ScreenService {
     private final ChemService chemService;
     private final MocService mocService;
     private final MeetingService meetingService;
+    private final KpiService kpiService;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -176,6 +178,7 @@ public class ScreenService {
                 .eq(PpeItem::getStatus, 1).apply("stock < min_stock")), "warning", "/safety/ppe");
         // 职业健康：按岗位和体检记录算（接害人员一般几十到几百人）
         var health = healthService.compute(null, null, today);
+        add(list, "年度安全目标红灯指标", kpiService.report(today.getYear()).red(), "danger", "/safety/kpi");
         add(list, "今天有人状态不好、不能上岗", meetingService.unfitToday(), "warning", "/safety/meeting");
         if (now.getHour() >= 9) {
             add(list, "班组今天还没开班前会", meetingService.notHeldToday().size(), "warning", "/safety/meeting");

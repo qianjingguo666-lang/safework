@@ -111,6 +111,7 @@ Title '1. 新工具按权限出现'
 $names = @((Call GET '/ai/agent/tools' $null $tAdmin).data | ForEach-Object { $_.name })
 $missing = @($newTools | Where-Object { $names -notcontains $_ })
 Check "企业管理员有 5 个新工具（缺：$($missing -join '、')）" ($missing.Count -eq 0)
+Check '企业管理员还有【查询安全目标完成情况】' ($names -contains 'get_safety_targets')
 $names = @((Call GET '/ai/agent/tools' $null $tZhao).data | ForEach-Object { $_.name })
 Check '监护人有危化品、事故、变更、班前会、责任书菜单，也就有这 5 个工具' ((@($newTools | Where-Object { $names -notcontains $_ })).Count -eq 0)
 

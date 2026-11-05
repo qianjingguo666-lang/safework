@@ -21,6 +21,11 @@
             <groupId>com.safework</groupId>
             <artifactId>safework-safety</artifactId>
         </dependency>
+        <!-- 安全目标考核要统计培训考试合格率 -->
+        <dependency>
+            <groupId>com.safework</groupId>
+            <artifactId>safework-training</artifactId>
+        </dependency>
         <!-- 作业票编号用 Redis 自增生成 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

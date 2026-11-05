@@ -172,7 +172,7 @@ Check '撤回公告后，已发出的消息也删除' ($r.code -eq 200 -and (Msg
 Title '7. 定时任务'
 $jobs = (Call GET '/platform/job/list' $null $tPlat).data
 $jobs | ForEach-Object { Write-Host "  - $($_.code)  $($_.cron)  下次 $($_.nextTime)  $($_.name)" -ForegroundColor DarkGray }
-$expectJobs = @('hazard-deadline', 'ticket-overtime', 'tenant-expire', 'data-cleanup', 'exam-reminder', 'exam-auto-submit', 'risk-check', 'cert-expiry', 'equipment-inspect', 'check-task', 'ppe-expire', 'health-exam', 'resp-sign', 'accident-measure', 'chem-stock', 'moc-restore', 'meeting-remind')
+$expectJobs = @('hazard-deadline', 'ticket-overtime', 'tenant-expire', 'data-cleanup', 'exam-reminder', 'exam-auto-submit', 'risk-check', 'cert-expiry', 'equipment-inspect', 'check-task', 'ppe-expire', 'health-exam', 'resp-sign', 'accident-measure', 'chem-stock', 'moc-restore', 'meeting-remind', 'kpi-monthly')
 $missing = @($expectJobs | Where-Object { @($jobs.code) -notcontains $_ })
 Check "注册了 $(@($jobs).Count) 个任务（隐患、作业票、到期、清理、考试提醒、考试自动交卷、风险巡检、证书到期、设备检验、安全检查、劳保到期、职业健康体检）" ($missing.Count -eq 0 -and @($jobs).Count -eq $expectJobs.Count)
 $r = Call GET '/platform/job/list' $null $tAdmin
