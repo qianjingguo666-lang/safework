@@ -56,6 +56,7 @@ const cards = computed(() => {
     v.assign != null && { key: 'assign', label: '待指派隐患', count: v.assign, to: '/m/hazards?tab=assign', hot: v.assign > 0 },
     v.verify != null && { key: 'verify', label: '待验收隐患', count: v.verify, to: '/m/hazards?tab=verify', hot: v.verify > 0 },
     v.check != null && { key: 'check', label: '安全检查', count: v.check, to: '/m/checks', hot: v.checkOverdue > 0, sub: v.checkOverdue ? `${v.checkOverdue} 张已逾期` : '待检查' },
+    v.ppe != null && { key: 'ppe', label: '我的劳保', count: v.ppe, to: '/m/ppe', hot: v.ppeExpired > 0, sub: v.ppeExpired ? `${v.ppeExpired} 项未领 / 过期` : v.ppe ? '快到期' : '都在有效期' },
     v.riskDue != null && { key: 'risk', label: '今日巡检', count: v.riskDue, to: '/safety/risk-check', sub: '到期 / 逾期' }
   ].filter(Boolean)
 })

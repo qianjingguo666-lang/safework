@@ -14,9 +14,12 @@ package com.safework.ticket.mobile;
  * @param riskDue        今天到期或已逾期的风险巡检
  * @param check          我待做的安全检查（含逾期）
  * @param checkOverdue   其中已逾期的
+ * @param ppe            我的劳保用品里需要处理的（未发放、已过期、30 天内到期）
+ * @param ppeExpired     其中未发放或已过期的
  * @param unread         未读消息
  */
 public record MobileHomeVO(Integer approve, Integer working, Integer rectify, Integer rectifyOverdue,
                            Integer assign, Integer verify, Integer riskDue, Integer check, Integer checkOverdue,
+                           Integer ppe, Integer ppeExpired,
                            Integer unread) {
 }

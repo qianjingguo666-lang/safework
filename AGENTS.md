@@ -47,22 +47,22 @@
 safework-common ← safework-system ← safework-safety ← safework-ticket ← safework-ai ← safework-server（启动类、配置、Flyway 脚本）
                                                     ↖ safework-training ↗
 ```
-- `safework-safety`：受限空间、隐患、风险、应急、资质(cert)、承包商(contractor)、设备(equipment)、安全检查(check)
+- `safework-safety`：受限空间、隐患、风险、应急、资质(cert)、承包商(contractor)、设备(equipment)、安全检查(check)、劳保用品(ppe)
 - `safework-ticket`：作业票、审批流、打印验真、大屏(screen)、手机首页(mobile)
-- 数据库脚本：`safework-server/src/main/resources/db/migration/V1~V16`
+- 数据库脚本：`safework-server/src/main/resources/db/migration/V1~V17`
 
 ## 4. 代码约定（新代码照着现有模块写）
 
-参考最新、最完整的模块：`safework-safety/.../check/`（安全检查）和 `.../equipment/`（设备设施）。
+参考最新、最完整的模块：`safework-safety/.../ppe/`（劳保用品）、`.../check/`（安全检查）和 `.../equipment/`（设备设施）。
 
 1. **规则写成纯函数类** `XxxRules`（无 Spring 依赖），配单元测试 `XxxRulesTest`；Service 调用它。状态流转集中在一个入口（作业票 `TicketService.fire()`、隐患 `HazardAction` 枚举），不允许直接改状态。
 2. **多租户**：业务表都有 `tenant_id`，SQL 里**不要手写租户条件**，租户插件自动加。定时任务没有登录上下文，用 `TenantJobHelper.forEachActiveTenant(...)` 按企业逐个执行。
 3. **权限两层**：接口上 `@SaCheckPermission("xxx:yyy")` 管“有没有这个功能”；Service 里判断“是不是本人的单据”。越权查看返回 404（不暴露数据是否存在）。
 4. **Long 会被序列化成字符串**（全局配置，防止 JS 丢精度）。返回给前端做加减比较的**计数用 Integer**；PS1 测试里比较数字要先 `[int]` 转换。
-5. **Flyway**：已执行的脚本**绝对不能修改**（会校验失败启动不了），改表就新增下一个版本。**下一个版本号是 V17**。
-6. **菜单 ID**：顶级 2 作业管理、3 安全管理、4 AI、6 数据看板、7 安全培训、8 安全大屏；安全管理下面已用到 **309**（安全检查），新页面从 **310** 开始，按钮 ID 是页面 ID×10+序号（如 3101）。新菜单要：迁移脚本插入 `sys_menu` + 更新 `sys_tenant_package.menu_ids` + 给已有企业的角色插 `sys_role_menu`，同时更新 `PresetRoles.java`（新开通企业的预置角色）。前端左侧菜单图标在 `Layout.vue` 的 `ICONS` 里加。
+5. **Flyway**：已执行的脚本**绝对不能修改**（会校验失败启动不了），改表就新增下一个版本。**下一个版本号是 V18**。
+6. **菜单 ID**：顶级 2 作业管理、3 安全管理、4 AI、6 数据看板、7 安全培训、8 安全大屏；安全管理下面已用到 **310**（劳保用品），新页面从 **311** 开始，按钮 ID 是页面 ID×10+序号（如 3111）。新菜单要：迁移脚本插入 `sys_menu` + 更新 `sys_tenant_package.menu_ids` + 给已有企业的角色插 `sys_role_menu`，同时更新 `PresetRoles.java`（新开通企业的预置角色）。前端左侧菜单图标在 `Layout.vue` 的 `ICONS` 里加。
 7. **消息通知**：`MessageService.send(...)`；定时任务里用 `sendOnce(去重key, 时间窗, ...)` 防止重复提醒。消息 `link` 用电脑端地址（如 `/safety/check?detail=ID`），手机端在 `utils/mobile.js` 的 `mobileLink()` 里映射。
-8. **定时任务**：实现 `ScheduledJob` 接口自动注册。现在共 **10 个**任务；新增任务要同步改 `test-message.ps1` 里的 `$expectJobs`。
+8. **定时任务**：实现 `ScheduledJob` 接口自动注册。现在共 **11 个**任务；新增任务要同步改 `test-message.ps1` 里的 `$expectJobs`。
 9. **附件**：新业务类型实现 `BizAccessChecker`（参考 `CheckAccessChecker`）。
 10. **跨模块复用业务方法**：例如“不合格转隐患”统一调用 `HazardService.report(...)`，不要直接往隐患表插数据。
 11. **可选请求体的 POST 接口**：Spring 对空请求体会返回 415。参考 `TicketController.submit`：一个 `consumes = JSON` 且 `@RequestBody` 必填的方法 + 一个不带请求体的方法。
@@ -131,20 +131,20 @@ bash demo-baseline.sh   # 保存新的演示数据基线（每天 4:00 按它恢
 ## 7. 踩过的坑（别再踩）
 
 - **服务器上一次粘贴多行命令会丢命令**：`docker compose exec` 会读走标准输入，把后面粘贴的行“吃掉”（导致解压根本没执行、服务器没更新，发生过三次）。脚本里已加 `</dev/null`，但仍然让他一行一行粘贴。
-- PS1 脚本：不要用 `$pid` 做变量名（PowerShell 只读自动变量）；`(表达式).Count -ge 1` 要整体加括号；PowerShell 5.1 里别用 `@(...)[-1]` 做比较，改成比较求和。
+- PS1 脚本：不要用 `$pid`、`$home`、`$host`、`$input`、`$args` 做变量名（PowerShell 自动变量，有的只读）；`(表达式).Count -ge 1` 要整体加括号；PowerShell 5.1 里别用 `@(...)[-1]` 做比较，改成比较求和。
 - 用 Python 等工具改 PS1 文件时会把 CRLF 变成 LF，改完要转回 CRLF + BOM。
 - `docker compose` 在 PowerShell 里不要 `cd /opt/...`（那是服务器路径）。
 - 前端打包产物、`node_modules`、`target` 不要提交。
 
-## 8. 已完成的功能（截至 2026-11-04，全部已测试并部署）
+## 8. 已完成的功能（截至 2026-11-05）
 
-登录安全与多租户、RBAC、作业票（多级审批、手写签名、打印验真、AI 预审）、受限空间与扫码、隐患闭环（语音 + AI 填表）、风险分级管控与巡检、应急管理、人员资质、承包商、设备设施、**安全检查（V16，最新）**、培训考试与 AI 出题、AI 知识库问答与智能体、消息与定时任务、数据看板、安全大屏、手机端 H5、SaaS 平台端、演示模式、Docker 部署、备份、看门狗微信告警。
+登录安全与多租户、RBAC、作业票（多级审批、手写签名、打印验真、AI 预审）、受限空间与扫码、隐患闭环（语音 + AI 填表）、风险分级管控与巡检、应急管理、人员资质、承包商、设备设施、安全检查（V16）、**劳保用品（V17，最新）**、培训考试与 AI 出题、AI 知识库问答与智能体、消息与定时任务、数据看板、安全大屏、手机端 H5、SaaS 平台端、演示模式、Docker 部署、备份、看门狗微信告警。
 
 详细设计全部写在 `README.md` 里。面试用的手动测试手册他在 Claude 里有一份文档。
 
 ## 9. 可以做的下一步（等他选）
 
 1. **更新简历**：把“安全检查”“手机端 H5”“看门狗告警”写进 SafeWork 项目经历（他的简历现在是 v4，PDF）。
-2. **新模块候选**：职业健康管理（危害因素、接害岗位、体检台账与到期提醒）、劳保用品管理（按岗位发放标准、领用、到期更换）、安全生产责任制（岗位职责清单、责任书、考核）。
+2. **新模块候选**：职业健康管理（危害因素、接害岗位、体检台账与到期提醒，可以复用劳保模块的“岗位”）、安全生产责任制（岗位职责清单、责任书手写签名、考核）。
 3. **备案通过后**：绑定域名 `qianjingguo.asia` + HTTPS（Nginx + 证书），然后把简历和演示地址换成域名。
-4. 可选增强：给智能体加 `search_check_tasks` 工具（参考 `EquipmentSearchTool`）。
+4. 可选增强：给智能体加 `search_check_tasks`、`search_ppe` 工具（参考 `EquipmentSearchTool`）。

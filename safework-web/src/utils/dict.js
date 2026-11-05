@@ -188,3 +188,12 @@ export const CHECK_TASK_STATES = {
   OVERDUE: { label: '已逾期', type: 'danger' },
   DONE: { label: '已完成', type: 'success' }
 }
+
+// 劳保用品
+export const PPE_CATEGORIES = { HEAD: '头部防护', RESPIRATORY: '呼吸防护', EYE_FACE: '眼面防护', HEARING: '听力防护', HAND: '手部防护', FOOT: '足部防护', BODY: '躯体防护', FALL: '坠落防护' }
+export const PPE_STATES = {
+  EXPIRED: { label: '已过期', type: 'danger' },
+  MISSING: { label: '未发放', type: 'danger' },
+  DUE_SOON: { label: '30 天内到期', type: 'warning' },
+  OK: { label: '正常', type: 'success' }
+}

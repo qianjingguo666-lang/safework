@@ -4,6 +4,9 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.safework.safety.check.CheckService;
 import com.safework.safety.entity.Hazard;
+import com.safework.safety.ppe.PpeRules;
+import com.safework.safety.ppe.PpeService;
+import com.safework.safety.ppe.PpeVOs;
 import com.safework.safety.entity.RiskPoint;
 import com.safework.safety.enums.HazardStatus;
 import com.safework.safety.mapper.HazardMapper;
@@ -40,6 +43,7 @@ public class MobileService {
     private final RiskPointMapper riskPointMapper;
     private final MessageService messageService;
     private final CheckService checkService;
+    private final PpeService ppeService;
 
     public MobileHomeVO home() {
         Long me = StpUtil.getLoginIdAsLong();
@@ -88,8 +92,14 @@ public class MobileService {
         int[] check = checkService.myPending();
         boolean showCheck = StpUtil.hasPermission(CheckService.PERM_LIST) || check[0] > 0;
 
+        // 我的劳保：需要处理的（未发放、已过期、快到期）
+        List<PpeVOs.LedgerRow> ppe = ppeService.mine().stream().filter(r -> !PpeRules.OK.equals(r.state())).toList();
+        boolean showPpe = StpUtil.hasPermission(PpeService.PERM_LIST) || !ppe.isEmpty();
+
         return new MobileHomeVO(num(approve), num(working), (int) rectify, (int) rectifyOverdue, num(assign), num(verify), num(riskDue),
-                showCheck ? check[0] : null, showCheck ? check[1] : null, (int) messageService.unreadCount(me));
+                showCheck ? check[0] : null, showCheck ? check[1] : null,
+                showPpe ? ppe.size() : null, showPpe ? (int) ppe.stream().filter(r -> PpeRules.needIssue(r.state())).count() : null,
+                (int) messageService.unreadCount(me));
     }
 
     private static Integer num(Long v) {

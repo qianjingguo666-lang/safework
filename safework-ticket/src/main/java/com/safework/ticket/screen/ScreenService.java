@@ -3,10 +3,13 @@ package com.safework.ticket.screen;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.safework.safety.check.CheckRules;
+import com.safework.safety.ppe.PpeRules;
 import com.safework.safety.contractor.ContractorRules;
 import com.safework.safety.emergency.EmergencyRules;
 import com.safework.safety.entity.CheckTask;
 import com.safework.safety.entity.Contractor;
+import com.safework.safety.entity.PpeIssue;
+import com.safework.safety.entity.PpeItem;
 import com.safework.safety.entity.ContractorWorker;
 import com.safework.safety.entity.EmergencyEvent;
 import com.safework.safety.entity.EmergencyPlan;
@@ -19,6 +22,8 @@ import com.safework.safety.enums.RiskLevel;
 import com.safework.safety.equipment.EquipmentRules;
 import com.safework.safety.mapper.CheckTaskMapper;
 import com.safework.safety.mapper.ContractorMapper;
+import com.safework.safety.mapper.PpeIssueMapper;
+import com.safework.safety.mapper.PpeItemMapper;
 import com.safework.safety.mapper.ContractorWorkerMapper;
 import com.safework.safety.mapper.EmergencyEventMapper;
 import com.safework.safety.mapper.EmergencyPlanMapper;
@@ -78,6 +83,8 @@ public class ScreenService {
     private final ContractorMapper contractorMapper;
     private final ContractorWorkerMapper workerMapper;
     private final CheckTaskMapper checkTaskMapper;
+    private final PpeIssueMapper ppeIssueMapper;
+    private final PpeItemMapper ppeItemMapper;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -147,6 +154,10 @@ public class ScreenService {
                 .eq(RiskPoint::getStatus, 1).lt(RiskPoint::getNextCheckTime, now)), "danger", "/safety/risk");
         add(list, "安全检查逾期未完成", checkTaskMapper.selectCount(Wrappers.<CheckTask>lambdaQuery()
                 .eq(CheckTask::getStatus, CheckRules.PENDING).lt(CheckTask::getDueDate, today)), "danger", "/safety/check");
+        add(list, "劳保用品过期未更换", ppeIssueMapper.selectCount(Wrappers.<PpeIssue>lambdaQuery()
+                .eq(PpeIssue::getStatus, PpeRules.IN_USE).lt(PpeIssue::getExpireDate, today)), "warning", "/safety/ppe");
+        add(list, "劳保用品库存不足", ppeItemMapper.selectCount(Wrappers.<PpeItem>lambdaQuery()
+                .eq(PpeItem::getStatus, 1).apply("stock < min_stock")), "warning", "/safety/ppe");
         add(list, "承包商黑名单", contractorMapper.selectCount(Wrappers.<Contractor>lambdaQuery()
                 .eq(Contractor::getStatus, ContractorRules.BLACKLISTED)), "warning", "/safety/contractor");
         add(list, "承包商资质 / 保险快到期", contractorMapper.selectCount(Wrappers.<Contractor>lambdaQuery()
