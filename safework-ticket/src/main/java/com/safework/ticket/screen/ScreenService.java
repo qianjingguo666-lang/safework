@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.safework.safety.check.CheckRules;
 import com.safework.safety.health.HealthRules;
 import com.safework.safety.health.HealthService;
+import com.safework.ticket.resp.RespService;
 import com.safework.safety.ppe.PpeRules;
 import com.safework.safety.contractor.ContractorRules;
 import com.safework.safety.emergency.EmergencyRules;
@@ -91,6 +92,7 @@ public class ScreenService {
     private final PpeItemMapper ppeItemMapper;
     private final OhExamMapper ohExamMapper;
     private final HealthService healthService;
+    private final RespService respService;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -166,6 +168,7 @@ public class ScreenService {
                 .eq(PpeItem::getStatus, 1).apply("stock < min_stock")), "warning", "/safety/ppe");
         // 职业健康：按岗位和体检记录算（接害人员一般几十到几百人）
         var health = healthService.compute(null, null, today);
+        add(list, "安全生产责任书逾期未签署", respService.overdueUnsigned(today), "warning", "/safety/resp");
         add(list, "职业禁忌证人员仍在接害岗位", health.stream().filter(r -> r.contraindication()).count(), "danger", "/safety/health");
         add(list, "职业健康体检逾期 / 未体检", health.stream().filter(r -> HealthRules.OVERDUE.equals(r.state()) || HealthRules.NEVER.equals(r.state())).count(),
                 "danger", "/safety/health");

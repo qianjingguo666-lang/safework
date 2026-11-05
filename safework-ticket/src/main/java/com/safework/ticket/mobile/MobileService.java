@@ -21,6 +21,7 @@ import com.safework.ticket.approval.ApprovalService;
 import com.safework.ticket.entity.WorkTicket;
 import com.safework.ticket.enums.TicketStatus;
 import com.safework.ticket.mapper.WorkTicketMapper;
+import com.safework.ticket.resp.RespService;
 import com.safework.ticket.service.TicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,7 @@ public class MobileService {
     private final CheckService checkService;
     private final PpeService ppeService;
     private final HealthService healthService;
+    private final RespService respService;
 
     public MobileHomeVO home() {
         Long me = StpUtil.getLoginIdAsLong();
@@ -108,6 +110,7 @@ public class MobileService {
                 showPpe ? ppe.size() : null, showPpe ? (int) ppe.stream().filter(r -> PpeRules.needIssue(r.state())).count() : null,
                 health == null ? null : (HealthRules.OK.equals(health.state()) ? 0 : 1) + health.openAbnormal(),
                 health == null ? null : health.state(),
+                respService.myPending(),
                 (int) messageService.unreadCount(me));
     }
 

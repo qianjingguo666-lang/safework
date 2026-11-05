@@ -214,3 +214,15 @@ export const OH_STATES = {
   DUE_SOON: { label: '30 天内到期', type: 'warning' },
   OK: { label: '正常', type: 'success' }
 }
+
+// 安全生产责任制
+export const RESP_BOOK_STATUS = {
+  DRAFT: { label: '草稿', type: 'info' },
+  PUBLISHED: { label: '签署中', type: 'primary' },
+  CLOSED: { label: '已结束', type: 'success' }
+}
+export const RESP_SIGN_STATUS = {
+  PENDING: { label: '待签署', type: 'warning' },
+  SIGNED: { label: '已签署', type: 'success' }
+}
+export const RESP_GRADES = { 优秀: 'success', 良好: 'primary', 合格: 'warning', 不合格: 'danger' }
