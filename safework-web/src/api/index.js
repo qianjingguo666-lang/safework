@@ -363,3 +363,14 @@ export const meetingTips = (teamId) => request.post(`/ai/meeting/${teamId}/tips`
 export const kpiReport = (year) => request.get('/safety/kpi/report', { params: { year } })
 export const kpiTargets = (year) => request.get('/safety/kpi/targets', { params: { year } })
 export const saveKpiTargets = (data) => request.put('/safety/kpi/targets', data)
+
+// 安全投入台账
+export const costOptions = () => request.get('/safety/cost/options')
+export const costReport = (year) => request.get('/safety/cost/report', { params: { year } })
+export const costAccrue = (revenue) => request.get('/safety/cost/accrue', { params: { revenue } })
+export const costPlanForm = (year) => request.get('/safety/cost/plan', { params: { year } })
+export const saveCostPlan = (data) => request.put('/safety/cost/plan', data)
+export const costExpenses = (params) => request.get('/safety/cost/expense/page', { params })
+export const getCostExpense = (id) => request.get(`/safety/cost/expense/${id}`)
+export const saveCostExpense = (id, data) => (id ? request.put(`/safety/cost/expense/${id}`, data) : request.post('/safety/cost/expense', data))
+export const voidCostExpense = (id, reason) => request.put(`/safety/cost/expense/${id}/void`, { reason })

@@ -121,7 +121,7 @@ public class PermissionService {
     public List<SysMenu> listAllMenus() {
         return menuMapper.selectList(Wrappers.<SysMenu>lambdaQuery()
                 .eq(SysMenu::getStatus, 1)
-                .orderByAsc(SysMenu::getSort));
+                .orderByAsc(SysMenu::getSort).orderByAsc(SysMenu::getId));
     }
 
     /** 扁平列表转树。找不到父节点的节点作为根节点，避免权限配置不完整时菜单直接消失 */

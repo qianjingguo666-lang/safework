@@ -107,6 +107,7 @@ const SAMPLES = [
   '最近 30 天安全情况怎么样？',
   '罐区现在甲醇有多少？有没有超储？我们有几处重大危险源？',
   '哪些事故整改措施逾期了？',
+  '今年安全费用用了多少？哪类超预算了？',
   '我有哪些变更要处理？今天哪些班组还没开班前会？',
   '高风险的受限空间有哪些？进入前要做哪些气体检测？',
   '催办所有已经逾期的隐患',
@@ -130,7 +131,7 @@ const VALUE_NAMES = {
 const ARG_NAMES = {
   status: '状态', level: '等级', overdue: '逾期', keyword: '关键词', limit: '条数', ticketType: '类型',
   riskLevel: '风险', spaceType: '空间类型', days: '天数', query: '检索',
-  overstockOnly: '只看超储', state: '状态', todo: '要我处理', date: '日期'
+  overstockOnly: '只看超储', state: '状态', todo: '要我处理', date: '日期', year: '年度'
 }
 const status = ref(null)
 const tools = ref([])

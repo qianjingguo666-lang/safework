@@ -9,6 +9,8 @@ import com.safework.ticket.kpi.KpiService;
 import com.safework.ticket.resp.RespService;
 import com.safework.safety.accident.AccidentService;
 import com.safework.safety.chem.ChemService;
+import com.safework.safety.cost.CostService;
+import com.safework.safety.cost.CostRules;
 import com.safework.safety.moc.MocService;
 import com.safework.safety.meeting.MeetingService;
 import com.safework.safety.ppe.PpeRules;
@@ -100,6 +102,7 @@ public class ScreenService {
     private final RespService respService;
     private final AccidentService accidentService;
     private final ChemService chemService;
+    private final CostService costService;
     private final MocService mocService;
     private final MeetingService meetingService;
     private final KpiService kpiService;
@@ -184,6 +187,9 @@ public class ScreenService {
             add(list, "班组今天还没开班前会", meetingService.notHeldToday().size(), "warning", "/safety/meeting");
         }
         add(list, "临时变更超期未恢复", mocService.temporaryOpen().stream().filter(c -> c.getRestoreDate() != null && today.isAfter(c.getRestoreDate())).count(), "warning", "/safety/moc");
+        var cost = costService.report(today.getYear());
+        add(list, "安全费用分类超预算", cost.categories().stream().filter(c -> CostRules.OVER.equals(c.state())).count(), "warning", "/safety/cost");
+        add(list, "安全费用已用超过可用额度", cost.hasPlan() && cost.balance().signum() < 0 ? 1 : 0, "danger", "/safety/cost");
         add(list, "危化品超过设计最大储量", chemService.overstocked().size(), "danger", "/safety/chem");
         add(list, "事故整改措施逾期", accidentService.openMeasures().stream().filter(m -> today.isAfter(m.getDeadline())).count(), "danger", "/safety/accident");
         add(list, "事故调查超期未结案", accidentService.openInvestigations().stream().filter(v -> today.isAfter(v.getDeadline())).count(), "warning", "/safety/accident");
