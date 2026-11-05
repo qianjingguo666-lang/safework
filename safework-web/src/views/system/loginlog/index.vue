@@ -7,7 +7,7 @@
       <el-select v-model="query.status" placeholder="结果" clearable style="width: 100px" @change="search">
         <el-option label="成功" :value="1" /><el-option label="失败" :value="0" />
       </el-select>
-      <el-date-picker v-model="range" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss"
+      <el-date-picker v-model="range" type="datetimerange" :popper-options="PICKER_POPPER" value-format="YYYY-MM-DD HH:mm:ss"
                       start-placeholder="开始时间" end-placeholder="结束时间" style="width: 340px" @change="search" />
       <el-button icon="Search" @click="search">查询</el-button>
     </div>
@@ -35,6 +35,7 @@
 </template>
 
 <script setup>
+import { PICKER_POPPER } from '@/utils/picker'
 import { onMounted, reactive, ref } from 'vue'
 import { pageLoginLogs, pagePlatformLoginLogs } from '@/api'
 

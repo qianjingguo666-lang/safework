@@ -19,7 +19,7 @@
       </el-form-item>
       <el-form-item label="计划时间" prop="planRange">
         <el-date-picker
-          v-model="form.planRange" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss"
+          v-model="form.planRange" type="datetimerange" :popper-options="PICKER_POPPER" value-format="YYYY-MM-DD HH:mm:ss"
           start-placeholder="开始时间" end-placeholder="结束时间" style="width: 100%"
         />
       </el-form-item>
@@ -94,6 +94,7 @@
 </template>
 
 <script setup>
+import { PICKER_POPPER } from '@/utils/picker'
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { certTicketCheck, contractorOptions, createTicket, listGuardians, spaceOptions, updateTicket } from '@/api'

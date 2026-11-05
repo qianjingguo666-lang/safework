@@ -12,3 +12,11 @@ body {
 .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
 .toolbar .spacer { flex: 1; }
 .pager { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+/* 屏幕不够高时，把日期选择面板变紧凑一点（每行矮 8px，日期范围面板矮 50px 左右） */
+@media (max-height: 820px) {
+  .el-date-table td { padding: 1px 0; }
+  .el-date-table td .el-date-table-cell { height: 28px; padding: 1px 0; }
+  .el-date-range-picker__content { padding: 8px 12px; }
+  .el-picker-panel__footer { padding: 4px 12px; }
+}

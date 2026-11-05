@@ -66,7 +66,7 @@ safework-common ← safework-system ← safework-safety ← safework-ticket ← 
 9. **附件**：新业务类型实现 `BizAccessChecker`（参考 `CheckAccessChecker`）。
 10. **跨模块复用业务方法**：例如“不合格转隐患”统一调用 `HazardService.report(...)`，不要直接往隐患表插数据。
 11. **可选请求体的 POST 接口**：Spring 对空请求体会返回 415。参考 `TicketController.submit`：一个 `consumes = JSON` 且 `@RequestBody` 必填的方法 + 一个不带请求体的方法。
-12. 前端：API 都在 `src/api/index.js`；字典在 `src/utils/dict.js`（**注意名字别重复**，`CHECK_STATES` 已被风险巡检占用，安全检查用的是 `CHECK_TASK_STATES`）；页面放 `src/views/<模块>/index.vue`，由后端菜单的 `component` 字段动态注册路由。
+12. 前端：**日期范围选择器（`type="datetimerange"` / `daterange`）一律加 `:popper-options="PICKER_POPPER"`**（`src/utils/picker.js`），否则笔记本 125% 缩放时面板超出屏幕、点不到“确定”（用户实际遇到过）。API 都在 `src/api/index.js`；字典在 `src/utils/dict.js`（**注意名字别重复**，`CHECK_STATES` 已被风险巡检占用，安全检查用的是 `CHECK_TASK_STATES`）；页面放 `src/views/<模块>/index.vue`，由后端菜单的 `component` 字段动态注册路由。
 
 ### 每个新模块的完成清单
 

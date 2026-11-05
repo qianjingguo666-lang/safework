@@ -84,7 +84,7 @@
           <el-col :span="8"><el-form-item label="可考次数" prop="maxAttempts"><el-input-number v-model="form.maxAttempts" :min="1" :max="10" style="width: 110px" /></el-form-item></el-col>
         </el-row>
         <el-form-item label="考试时间" prop="range">
-          <el-date-picker v-model="form.range" type="datetimerange" value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM-DD HH:mm"
+          <el-date-picker v-model="form.range" type="datetimerange" :popper-options="PICKER_POPPER" value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM-DD HH:mm"
                           start-placeholder="开始" end-placeholder="结束" style="width: 100%" />
         </el-form-item>
         <el-form-item label="参考部门">
@@ -168,6 +168,7 @@
 </template>
 
 <script setup>
+import { PICKER_POPPER } from '@/utils/picker'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
