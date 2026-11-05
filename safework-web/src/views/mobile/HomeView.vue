@@ -61,6 +61,7 @@ const cards = computed(() => {
     v.resp != null && { key: 'resp', label: '责任书', count: v.resp, to: '/m/resp', hot: v.resp > 0, sub: v.resp ? '待签署' : '' },
     v.accident != null && { key: 'accident', label: '事故整改', count: v.accident, to: '/m/accident', hot: v.accident > 0, sub: v.accident ? '待落实' : '' },
     v.chem != null && { key: 'chem', label: '危化品', count: v.chem, to: '/m/chem', hot: v.chem > 0, sub: v.chem ? '项超储' : '出入库' },
+    v.moc != null && { key: 'moc', label: '变更', count: v.moc, to: '/m/moc', hot: v.moc > 0, sub: v.moc ? '待处理' : '' },
     v.riskDue != null && { key: 'risk', label: '今日巡检', count: v.riskDue, to: '/safety/risk-check', sub: '到期 / 逾期' }
   ].filter(Boolean)
 })

@@ -337,3 +337,11 @@ export const saveChemStock = (storeId, data) => request.post(`/safety/chem/store
 export const removeChemStock = (stockId) => request.delete(`/safety/chem/stock/${stockId}`)
 export const chemFlow = (stockId, data) => request.post(`/safety/chem/stock/${stockId}/flow`, data)
 export const chemFlows = (params) => request.get('/safety/chem/flow/page', { params })
+
+// 变更管理
+export const mocOptions = () => request.get('/safety/moc/options')
+export const mocOverview = () => request.get('/safety/moc/overview')
+export const mocPage = (params) => request.get('/safety/moc/page', { params })
+export const mocDetail = (id) => request.get(`/safety/moc/${id}`)
+export const saveMoc = (id, data) => (id ? request.put(`/safety/moc/${id}`, data) : request.post('/safety/moc', data))
+export const mocAction = (id, action, data = {}) => request.post(`/safety/moc/${id}/${action}`, data)

@@ -247,3 +247,18 @@ export const CHEM_FLOW_TYPES = { IN: { label: '入库', type: 'success' }, OUT: 
 export const CHEM_LEVELS = { 1: { label: '一级', color: '#cf1322' }, 2: { label: '二级', color: '#fa541c' }, 3: { label: '三级', color: '#faad14' }, 4: { label: '四级', color: '#1677ff' } }
 /** 吨数显示：去掉多余的 0 */
 export const ton = (v) => (v == null ? '-' : String(Number(v)))
+
+// 变更管理
+export const MOC_TYPES = { PROCESS: '工艺变更', EQUIPMENT: '设备设施变更', MATERIAL: '原辅料变更', PERSONNEL: '关键岗位人员变更', MANAGEMENT: '管理制度变更' }
+export const MOC_STATUS = {
+  DRAFT: { label: '草稿', type: 'info' },
+  ASSESSING: { label: '风险评估', type: 'warning' },
+  APPROVING: { label: '待审批', type: 'warning' },
+  IMPLEMENTING: { label: '实施中', type: 'primary' },
+  PSSR: { label: '投用前检查', type: 'primary' },
+  CLOSED: { label: '已投用', type: 'success' },
+  CANCELLED: { label: '已取消', type: 'info' }
+}
+/** 步骤条：草稿 → 评估 → 审批 → 实施 → 投用前检查 → 投用 */
+export const MOC_STEPS = ['DRAFT', 'ASSESSING', 'APPROVING', 'IMPLEMENTING', 'PSSR', 'CLOSED']
+export const MOC_LOG_ACTIONS = { CREATE: '新建', SUBMIT: '提交', RETURN: '退回', ASSESS: '风险评估', APPROVE: '审批通过', REJECT: '驳回', IMPLEMENTED: '实施完成', PSSR_PASS: '投用前检查合格', PSSR_FAIL: '投用前检查不合格', CANCEL: '取消', RESTORE: '恢复原状' }
