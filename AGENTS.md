@@ -116,7 +116,9 @@ ssh root@47.117.146.55
 ```bash
 # 【服务器】一行一行粘贴
 cd /opt/safework
-bash update.sh          # 备份 → 解压 → 构建 → 启动 → 等后端启动成功。2G 内存构建要 10~15 分钟，计时在涨就是正常
+docker compose stop backend                     # 服务器内存只有 1.6G：先停后端腾内存，否则备份时会卡死、SSH 断开
+nohup bash update.sh > update.log 2>&1 &        # 后台跑，SSH 断了也会继续（2026-11 出现过前台跑时 SSH 断开、更新中断）
+tail -f update.log                              # 看进度，出现“更新完成”即可；Ctrl+C 只是退出查看
 # 这次新增了演示数据时，再执行（一行一行）：
 bash demo-reset.sh      # 等“恢复完成”
 bash demo-baseline.sh   # 保存新的演示数据基线（每天 4:00 按它恢复）

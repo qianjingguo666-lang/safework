@@ -82,7 +82,7 @@ bash start.sh
 ```
 
 - 国内服务器连不上 Docker Hub：`server-init.sh` 会配置镜像加速。阿里云服务器到「容器镜像服务 ACR → 镜像工具 → 镜像加速器」复制专属地址传给脚本，另外还配置了两个公共加速地址备用
-- 发布新版本：本机重新运行 `pack.ps1`、上传，服务器上运行 `cd /opt/safework && bash update.sh`：先备份数据库，再解压发布包（覆盖程序文件，不动 `.env` 和数据卷），然后重新构建、启动，并等到后端启动成功、打印数据库升级记录
+- 发布新版本：本机重新运行 `pack.ps1`、上传，服务器上运行 `cd /opt/safework`、`docker compose stop backend`（内存小的服务器先腾内存）、`nohup bash update.sh > update.log 2>&1 &`、`tail -f update.log`（后台运行，SSH 断开也不影响）：先备份数据库，再解压发布包（覆盖程序文件，不动 `.env` 和数据卷），然后重新构建、启动，并等到后端启动成功、打印数据库升级记录
 - 不要一次粘贴多行命令：`docker compose exec` 会读取标准输入，把后面粘贴的几行“吃掉”，导致解压之类的命令根本没执行（脚本里已经加了 `</dev/null` 防止这种情况）
 - 数据卷名称和 `docker-compose.prod.yml` 一样（项目名都是 `safework-prod`），以后换成在服务器上编译也不会丢数据
 - 备份：`bash backup.sh`
