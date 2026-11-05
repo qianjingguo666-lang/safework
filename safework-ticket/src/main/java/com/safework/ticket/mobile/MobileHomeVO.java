@@ -16,10 +16,13 @@ package com.safework.ticket.mobile;
  * @param checkOverdue   其中已逾期的
  * @param ppe            我的劳保用品里需要处理的（未发放、已过期、30 天内到期）
  * @param ppeExpired     其中未发放或已过期的
+ * @param health         职业健康要处理的（体检从没做 / 逾期 / 30 天内到期算 1 项，加上未处理的异常体检数）；不接害为空
+ * @param healthState    体检状态 NEVER / OVERDUE / DUE_SOON / OK
  * @param unread         未读消息
  */
 public record MobileHomeVO(Integer approve, Integer working, Integer rectify, Integer rectifyOverdue,
                            Integer assign, Integer verify, Integer riskDue, Integer check, Integer checkOverdue,
                            Integer ppe, Integer ppeExpired,
+                           Integer health, String healthState,
                            Integer unread) {
 }

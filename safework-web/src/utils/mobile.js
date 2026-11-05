@@ -28,6 +28,7 @@ export function setPreferDesktop(v) {
 export function mobileLink(link) {
   if (!link) return null
   if (link.startsWith('/safety/ppe')) return '/m/ppe'
+  if (link.startsWith('/safety/health')) return '/m/health'
   const m = link.match(/^\/(ticket\/list|safety\/hazard|safety\/check)\?detail=(\d+)/)
   if (!m) return null
   return { 'ticket/list': `/m/ticket/${m[2]}`, 'safety/hazard': `/m/hazard/${m[2]}`, 'safety/check': `/m/check/${m[2]}` }[m[1]]

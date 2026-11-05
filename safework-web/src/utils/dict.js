@@ -197,3 +197,20 @@ export const PPE_STATES = {
   DUE_SOON: { label: '30 天内到期', type: 'warning' },
   OK: { label: '正常', type: 'success' }
 }
+
+// 职业健康
+export const OH_CATEGORIES = { CHEMICAL: '化学因素', DUST: '粉尘', PHYSICAL: '物理因素', BIOLOGICAL: '生物因素', RADIATION: '放射性因素' }
+export const OH_EXAM_TYPES = { PRE: '上岗前', ON: '在岗期间', LEAVE: '离岗时', EMERGENCY: '应急' }
+export const OH_CONCLUSIONS = {
+  NORMAL: { label: '目前未见异常', type: 'success' },
+  OTHER: { label: '其他疾病或异常', type: 'info' },
+  RECHECK: { label: '需要复查', type: 'warning' },
+  SUSPECT: { label: '疑似职业病', type: 'danger' },
+  CONTRAINDICATION: { label: '职业禁忌证', type: 'danger' }
+}
+export const OH_STATES = {
+  OVERDUE: { label: '体检逾期', type: 'danger' },
+  NEVER: { label: '从未体检', type: 'danger' },
+  DUE_SOON: { label: '30 天内到期', type: 'warning' },
+  OK: { label: '正常', type: 'success' }
+}

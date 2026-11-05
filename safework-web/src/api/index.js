@@ -274,3 +274,17 @@ export const ppeItemStatus = (id, status) => request.put(`/safety/ppe/item/${id}
 export const ppePosts = () => request.get('/safety/ppe/post/list')
 export const savePpePost = (id, data) => (id ? request.put(`/safety/ppe/post/${id}`, data) : request.post('/safety/ppe/post', data))
 export const ppePostStatus = (id, status) => request.put(`/safety/ppe/post/${id}/status`, null, { params: { status } })
+
+// 职业健康
+export const healthOptions = () => request.get('/safety/health/options')
+export const healthLedger = (params) => request.get('/safety/health/ledger', { params })
+export const healthOverview = () => request.get('/safety/health/overview')
+export const healthMine = () => request.get('/safety/health/mine')
+export const healthExamPage = (params) => request.get('/safety/health/exam/page', { params })
+export const saveHealthExam = (data) => request.post('/safety/health/exam', data)
+export const handleHealthExam = (id, measure) => request.post(`/safety/health/exam/${id}/handle`, { measure })
+export const healthFactors = (enabled) => request.get('/safety/health/factor/list', { params: enabled ? { enabled: true } : {} })
+export const saveHealthFactor = (id, data) => (id ? request.put(`/safety/health/factor/${id}`, data) : request.post('/safety/health/factor', data))
+export const healthFactorStatus = (id, status) => request.put(`/safety/health/factor/${id}/status`, null, { params: { status } })
+export const healthPosts = () => request.get('/safety/health/post/list')
+export const saveHealthPostFactors = (postId, factorIds) => request.put(`/safety/health/post/${postId}/factors`, { factorIds })

@@ -4,6 +4,9 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.safework.safety.check.CheckService;
 import com.safework.safety.entity.Hazard;
+import com.safework.safety.health.HealthRules;
+import com.safework.safety.health.HealthService;
+import com.safework.safety.health.HealthVOs;
 import com.safework.safety.ppe.PpeRules;
 import com.safework.safety.ppe.PpeService;
 import com.safework.safety.ppe.PpeVOs;
@@ -44,6 +47,7 @@ public class MobileService {
     private final MessageService messageService;
     private final CheckService checkService;
     private final PpeService ppeService;
+    private final HealthService healthService;
 
     public MobileHomeVO home() {
         Long me = StpUtil.getLoginIdAsLong();
@@ -96,9 +100,14 @@ public class MobileService {
         List<PpeVOs.LedgerRow> ppe = ppeService.mine().stream().filter(r -> !PpeRules.OK.equals(r.state())).toList();
         boolean showPpe = StpUtil.hasPermission(PpeService.PERM_LIST) || !ppe.isEmpty();
 
+        // 职业健康：只有在接害岗位上的人才显示
+        HealthVOs.LedgerRow health = healthService.mine().ledger();
+
         return new MobileHomeVO(num(approve), num(working), (int) rectify, (int) rectifyOverdue, num(assign), num(verify), num(riskDue),
                 showCheck ? check[0] : null, showCheck ? check[1] : null,
                 showPpe ? ppe.size() : null, showPpe ? (int) ppe.stream().filter(r -> PpeRules.needIssue(r.state())).count() : null,
+                health == null ? null : (HealthRules.OK.equals(health.state()) ? 0 : 1) + health.openAbnormal(),
+                health == null ? null : health.state(),
                 (int) messageService.unreadCount(me));
     }
 

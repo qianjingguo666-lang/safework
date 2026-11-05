@@ -3,11 +3,14 @@ package com.safework.ticket.screen;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.safework.safety.check.CheckRules;
+import com.safework.safety.health.HealthRules;
+import com.safework.safety.health.HealthService;
 import com.safework.safety.ppe.PpeRules;
 import com.safework.safety.contractor.ContractorRules;
 import com.safework.safety.emergency.EmergencyRules;
 import com.safework.safety.entity.CheckTask;
 import com.safework.safety.entity.Contractor;
+import com.safework.safety.entity.OhExam;
 import com.safework.safety.entity.PpeIssue;
 import com.safework.safety.entity.PpeItem;
 import com.safework.safety.entity.ContractorWorker;
@@ -22,6 +25,7 @@ import com.safework.safety.enums.RiskLevel;
 import com.safework.safety.equipment.EquipmentRules;
 import com.safework.safety.mapper.CheckTaskMapper;
 import com.safework.safety.mapper.ContractorMapper;
+import com.safework.safety.mapper.OhExamMapper;
 import com.safework.safety.mapper.PpeIssueMapper;
 import com.safework.safety.mapper.PpeItemMapper;
 import com.safework.safety.mapper.ContractorWorkerMapper;
@@ -85,6 +89,8 @@ public class ScreenService {
     private final CheckTaskMapper checkTaskMapper;
     private final PpeIssueMapper ppeIssueMapper;
     private final PpeItemMapper ppeItemMapper;
+    private final OhExamMapper ohExamMapper;
+    private final HealthService healthService;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -158,6 +164,13 @@ public class ScreenService {
                 .eq(PpeIssue::getStatus, PpeRules.IN_USE).lt(PpeIssue::getExpireDate, today)), "warning", "/safety/ppe");
         add(list, "劳保用品库存不足", ppeItemMapper.selectCount(Wrappers.<PpeItem>lambdaQuery()
                 .eq(PpeItem::getStatus, 1).apply("stock < min_stock")), "warning", "/safety/ppe");
+        // 职业健康：按岗位和体检记录算（接害人员一般几十到几百人）
+        var health = healthService.compute(null, null, today);
+        add(list, "职业禁忌证人员仍在接害岗位", health.stream().filter(r -> r.contraindication()).count(), "danger", "/safety/health");
+        add(list, "职业健康体检逾期 / 未体检", health.stream().filter(r -> HealthRules.OVERDUE.equals(r.state()) || HealthRules.NEVER.equals(r.state())).count(),
+                "danger", "/safety/health");
+        add(list, "职业健康体检异常未处理", ohExamMapper.selectCount(Wrappers.<OhExam>lambdaQuery()
+                .eq(OhExam::getHandleStatus, HealthRules.OPEN)), "warning", "/safety/health");
         add(list, "承包商黑名单", contractorMapper.selectCount(Wrappers.<Contractor>lambdaQuery()
                 .eq(Contractor::getStatus, ContractorRules.BLACKLISTED)), "warning", "/safety/contractor");
         add(list, "承包商资质 / 保险快到期", contractorMapper.selectCount(Wrappers.<Contractor>lambdaQuery()
