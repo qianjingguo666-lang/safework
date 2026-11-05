@@ -27,6 +27,7 @@ const routes = [
       { path: 'hazards', component: () => import('@/views/mobile/HazardsView.vue'), meta: { title: '隐患', tab: true } },
       { path: 'hazard/:id', component: () => import('@/views/mobile/HazardView.vue'), meta: { title: '隐患详情', back: true, backTo: '/m/hazards' } },
       { path: 'report', component: () => import('@/views/mobile/ReportView.vue'), meta: { title: '上报隐患', back: true } },
+      { path: 'accident', component: () => import('@/views/mobile/AccidentView.vue'), meta: { title: '事故整改措施', back: true } },
       { path: 'resp', component: () => import('@/views/mobile/RespListView.vue'), meta: { title: '安全生产责任书', back: true } },
       { path: 'resp/:id', component: () => import('@/views/mobile/RespView.vue'), meta: { title: '责任书', back: true, backTo: '/m/resp' } },
       { path: 'health', component: () => import('@/views/mobile/HealthView.vue'), meta: { title: '我的职业健康', back: true } },

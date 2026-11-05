@@ -59,6 +59,7 @@ const cards = computed(() => {
     v.ppe != null && { key: 'ppe', label: '我的劳保', count: v.ppe, to: '/m/ppe', hot: v.ppeExpired > 0, sub: v.ppeExpired ? `${v.ppeExpired} 项未领 / 过期` : v.ppe ? '快到期' : '都在有效期' },
     v.health != null && { key: 'health', label: '职业体检', count: v.health, to: '/m/health', hot: ['OVERDUE', 'NEVER'].includes(v.healthState), sub: { OVERDUE: '体检已逾期', NEVER: '还没体检', DUE_SOON: '快到期', OK: '' }[v.healthState] },
     v.resp != null && { key: 'resp', label: '责任书', count: v.resp, to: '/m/resp', hot: v.resp > 0, sub: v.resp ? '待签署' : '' },
+    v.accident != null && { key: 'accident', label: '事故整改', count: v.accident, to: '/m/accident', hot: v.accident > 0, sub: v.accident ? '待落实' : '' },
     v.riskDue != null && { key: 'risk', label: '今日巡检', count: v.riskDue, to: '/safety/risk-check', sub: '到期 / 逾期' }
   ].filter(Boolean)
 })

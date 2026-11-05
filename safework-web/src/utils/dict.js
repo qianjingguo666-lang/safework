@@ -226,3 +226,16 @@ export const RESP_SIGN_STATUS = {
   SIGNED: { label: '已签署', type: 'success' }
 }
 export const RESP_GRADES = { 优秀: 'success', 良好: 'primary', 合格: 'warning', 不合格: 'danger' }
+
+// 事故调查
+export const ACCIDENT_STATES = {
+  INVESTIGATING: { label: '调查中', type: 'primary' },
+  OVERDUE: { label: '调查超期', type: 'danger' },
+  CLOSED: { label: '已结案', type: 'success' }
+}
+export const ACCIDENT_MEASURE_STATES = {
+  OPEN: { label: '进行中', type: 'primary' },
+  OVERDUE: { label: '已逾期', type: 'danger' },
+  DONE: { label: '已完成', type: 'success' }
+}
+export const ACCIDENT_DUTIES = { DIRECT: '直接责任', MAIN: '主要责任', LEADER: '领导责任', MANAGEMENT: '管理责任' }

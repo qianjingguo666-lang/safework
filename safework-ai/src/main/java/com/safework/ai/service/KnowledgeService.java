@@ -99,6 +99,19 @@ public class KnowledgeService {
 
         // 1. 提取文字、切分（解析失败直接报错，不入库）
         List<TextChunker.PageText> pages = parser.parse(fileName, bytes);
+        return store(fileName, ext, file.getSize(), pages, title);
+    }
+
+    /**
+     * 直接把一段文字写进知识库（比如事故调查结案后的事故案例），和上传 Markdown 文件效果一样
+     */
+    public AiDocument addText(String title, String text) {
+        String fileName = title.replaceAll("[\\\\/:*?\"<>|]", "_") + ".md";
+        byte[] bytes = text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return store(fileName, "md", (long) bytes.length, parser.parse(fileName, bytes), title);
+    }
+
+    private AiDocument store(String fileName, String ext, long fileSize, List<TextChunker.PageText> pages, String title) {
         int charCount = pages.stream().mapToInt(p -> p.text() == null ? 0 : p.text().length()).sum();
         List<TextChunker.Chunk> chunks = new TextChunker(props.getRag().getChunkSize(), props.getRag().getChunkOverlap())
                 .split(pages);
@@ -112,7 +125,7 @@ public class KnowledgeService {
         doc.setTitle(StringUtils.hasText(title) ? title.trim() : fileName.replaceFirst("\\.[^.]+$", ""));
         doc.setFileName(fileName);
         doc.setFileType(ext);
-        doc.setFileSize(file.getSize());
+        doc.setFileSize(fileSize);
         doc.setCharCount(charCount);
         doc.setChunkCount(chunks.size());
         doc.setEmbedded(0);
