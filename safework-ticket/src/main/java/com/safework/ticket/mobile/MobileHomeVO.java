@@ -20,12 +20,13 @@ package com.safework.ticket.mobile;
  * @param healthState    体检状态 NEVER / OVERDUE / DUE_SOON / OK
  * @param resp           待我签署的安全生产责任书；没有菜单也没有责任书为空
  * @param accident       我还没完成的事故整改措施；没有菜单也没有措施为空
+ * @param chem           我负责的危化品单元里超储的种数；不是单元负责人为空
  * @param unread         未读消息
  */
 public record MobileHomeVO(Integer approve, Integer working, Integer rectify, Integer rectifyOverdue,
                            Integer assign, Integer verify, Integer riskDue, Integer check, Integer checkOverdue,
                            Integer ppe, Integer ppeExpired,
                            Integer health, String healthState,
-                           Integer resp, Integer accident,
+                           Integer resp, Integer accident, Integer chem,
                            Integer unread) {
 }

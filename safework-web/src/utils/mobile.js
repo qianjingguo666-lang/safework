@@ -31,6 +31,7 @@ export function mobileLink(link) {
   if (link.startsWith('/safety/health')) return '/m/health'
   if (link.startsWith('/safety/resp')) return '/m/resp'
   if (link.startsWith('/safety/accident')) return '/m/accident'
+  if (link.startsWith('/safety/chem')) return '/m/chem'
   const m = link.match(/^\/(ticket\/list|safety\/hazard|safety\/check)\?detail=(\d+)/)
   if (!m) return null
   return { 'ticket/list': `/m/ticket/${m[2]}`, 'safety/hazard': `/m/hazard/${m[2]}`, 'safety/check': `/m/check/${m[2]}` }[m[1]]

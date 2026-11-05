@@ -239,3 +239,11 @@ export const ACCIDENT_MEASURE_STATES = {
   DONE: { label: '已完成', type: 'success' }
 }
 export const ACCIDENT_DUTIES = { DIRECT: '直接责任', MAIN: '主要责任', LEADER: '领导责任', MANAGEMENT: '管理责任' }
+
+// 危险化学品
+export const CHEM_CATEGORIES = { EXPLOSIVE: '爆炸物', FLAMMABLE_GAS: '易燃气体', FLAMMABLE_LIQUID: '易燃液体', FLAMMABLE_SOLID: '易燃固体', OXIDIZER: '氧化性物质', TOXIC: '急性毒性', CORROSIVE: '腐蚀性物质', OTHER: '其他' }
+export const CHEM_STORE_TYPES = { TANK_AREA: '罐区', WAREHOUSE: '库区（仓库）', PRODUCTION: '生产装置' }
+export const CHEM_FLOW_TYPES = { IN: { label: '入库', type: 'success' }, OUT: { label: '出库', type: 'warning' }, CHECK: { label: '盘点', type: 'info' } }
+export const CHEM_LEVELS = { 1: { label: '一级', color: '#cf1322' }, 2: { label: '二级', color: '#fa541c' }, 3: { label: '三级', color: '#faad14' }, 4: { label: '四级', color: '#1677ff' } }
+/** 吨数显示：去掉多余的 0 */
+export const ton = (v) => (v == null ? '-' : String(Number(v)))

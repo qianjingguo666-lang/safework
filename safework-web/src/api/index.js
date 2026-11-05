@@ -322,3 +322,18 @@ export const myAccidentMeasures = () => request.get('/safety/accident/measure/mi
 export const addAccidentPunish = (id, data) => request.post(`/safety/accident/${id}/punish`, data)
 export const removeAccidentPunish = (punishId) => request.delete(`/safety/accident/punish/${punishId}`)
 export const closeAccident = (id, toKnowledge) => request.post(`/safety/accident/${id}/close`, { toKnowledge })
+
+// 危险化学品
+export const chemOptions = () => request.get('/safety/chem/options')
+export const chemOverview = () => request.get('/safety/chem/overview')
+export const chemItems = (params) => request.get('/safety/chem/item/list', { params })
+export const saveChemItem = (id, data) => (id ? request.put(`/safety/chem/item/${id}`, data) : request.post('/safety/chem/item', data))
+export const chemItemStatus = (id, status) => request.put(`/safety/chem/item/${id}/status`, null, { params: { status } })
+export const chemStores = () => request.get('/safety/chem/store/list')
+export const myChemStores = () => request.get('/safety/chem/store/mine')
+export const saveChemStore = (id, data) => (id ? request.put(`/safety/chem/store/${id}`, data) : request.post('/safety/chem/store', data))
+export const chemStoreStatus = (id, status) => request.put(`/safety/chem/store/${id}/status`, null, { params: { status } })
+export const saveChemStock = (storeId, data) => request.post(`/safety/chem/store/${storeId}/stock`, data)
+export const removeChemStock = (stockId) => request.delete(`/safety/chem/stock/${stockId}`)
+export const chemFlow = (stockId, data) => request.post(`/safety/chem/stock/${stockId}/flow`, data)
+export const chemFlows = (params) => request.get('/safety/chem/flow/page', { params })
