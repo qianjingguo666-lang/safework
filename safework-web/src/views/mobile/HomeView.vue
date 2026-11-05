@@ -56,6 +56,7 @@ const cards = computed(() => {
     v.assign != null && { key: 'assign', label: '待指派隐患', count: v.assign, to: '/m/hazards?tab=assign', hot: v.assign > 0 },
     v.verify != null && { key: 'verify', label: '待验收隐患', count: v.verify, to: '/m/hazards?tab=verify', hot: v.verify > 0 },
     v.check != null && { key: 'check', label: '安全检查', count: v.check, to: '/m/checks', hot: v.checkOverdue > 0, sub: v.checkOverdue ? `${v.checkOverdue} 张已逾期` : '待检查' },
+    v.meeting != null && { key: 'meeting', label: '班前会', count: v.meeting, to: '/m/meeting', hot: v.meeting > 0, sub: v.meeting ? '待开 / 待确认' : '今天已完成' },
     v.ppe != null && { key: 'ppe', label: '我的劳保', count: v.ppe, to: '/m/ppe', hot: v.ppeExpired > 0, sub: v.ppeExpired ? `${v.ppeExpired} 项未领 / 过期` : v.ppe ? '快到期' : '都在有效期' },
     v.health != null && { key: 'health', label: '职业体检', count: v.health, to: '/m/health', hot: ['OVERDUE', 'NEVER'].includes(v.healthState), sub: { OVERDUE: '体检已逾期', NEVER: '还没体检', DUE_SOON: '快到期', OK: '' }[v.healthState] },
     v.resp != null && { key: 'resp', label: '责任书', count: v.resp, to: '/m/resp', hot: v.resp > 0, sub: v.resp ? '待签署' : '' },

@@ -9,6 +9,7 @@ import com.safework.ticket.resp.RespService;
 import com.safework.safety.accident.AccidentService;
 import com.safework.safety.chem.ChemService;
 import com.safework.safety.moc.MocService;
+import com.safework.safety.meeting.MeetingService;
 import com.safework.safety.ppe.PpeRules;
 import com.safework.safety.contractor.ContractorRules;
 import com.safework.safety.emergency.EmergencyRules;
@@ -99,6 +100,7 @@ public class ScreenService {
     private final AccidentService accidentService;
     private final ChemService chemService;
     private final MocService mocService;
+    private final MeetingService meetingService;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -174,6 +176,10 @@ public class ScreenService {
                 .eq(PpeItem::getStatus, 1).apply("stock < min_stock")), "warning", "/safety/ppe");
         // 职业健康：按岗位和体检记录算（接害人员一般几十到几百人）
         var health = healthService.compute(null, null, today);
+        add(list, "今天有人状态不好、不能上岗", meetingService.unfitToday(), "warning", "/safety/meeting");
+        if (now.getHour() >= 9) {
+            add(list, "班组今天还没开班前会", meetingService.notHeldToday().size(), "warning", "/safety/meeting");
+        }
         add(list, "临时变更超期未恢复", mocService.temporaryOpen().stream().filter(c -> c.getRestoreDate() != null && today.isAfter(c.getRestoreDate())).count(), "warning", "/safety/moc");
         add(list, "危化品超过设计最大储量", chemService.overstocked().size(), "danger", "/safety/chem");
         add(list, "事故整改措施逾期", accidentService.openMeasures().stream().filter(m -> today.isAfter(m.getDeadline())).count(), "danger", "/safety/accident");

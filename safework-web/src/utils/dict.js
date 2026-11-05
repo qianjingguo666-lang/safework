@@ -262,3 +262,8 @@ export const MOC_STATUS = {
 /** 步骤条：草稿 → 评估 → 审批 → 实施 → 投用前检查 → 投用 */
 export const MOC_STEPS = ['DRAFT', 'ASSESSING', 'APPROVING', 'IMPLEMENTING', 'PSSR', 'CLOSED']
 export const MOC_LOG_ACTIONS = { CREATE: '新建', SUBMIT: '提交', RETURN: '退回', ASSESS: '风险评估', APPROVE: '审批通过', REJECT: '驳回', IMPLEMENTED: '实施完成', PSSR_PASS: '投用前检查合格', PSSR_FAIL: '投用前检查不合格', CANCEL: '取消', RESTORE: '恢复原状' }
+
+// 班前会
+export const MEETING_SHIFTS = { DAY: '白班', MIDDLE: '中班', NIGHT: '夜班' }
+export const MEETING_ATTENDS = { PRESENT: { label: '出席', type: 'success' }, LEAVE: { label: '请假', type: 'info' }, ABSENT: { label: '缺席', type: 'danger' } }
+export const MEETING_CONDITIONS = { GOOD: { label: '良好', type: 'success' }, UNWELL: { label: '身体不适', type: 'danger' }, TIRED: { label: '精神疲劳', type: 'warning' }, DRINK: { label: '饮酒', type: 'danger' } }

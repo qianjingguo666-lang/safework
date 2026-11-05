@@ -25,6 +25,7 @@ import com.safework.ticket.resp.RespService;
 import com.safework.safety.accident.AccidentService;
 import com.safework.safety.chem.ChemService;
 import com.safework.safety.moc.MocService;
+import com.safework.safety.meeting.MeetingService;
 import com.safework.ticket.service.TicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,7 @@ public class MobileService {
     private final AccidentService accidentService;
     private final ChemService chemService;
     private final MocService mocService;
+    private final MeetingService meetingService;
 
     public MobileHomeVO home() {
         Long me = StpUtil.getLoginIdAsLong();
@@ -116,7 +118,7 @@ public class MobileService {
                 showPpe ? ppe.size() : null, showPpe ? (int) ppe.stream().filter(r -> PpeRules.needIssue(r.state())).count() : null,
                 health == null ? null : (HealthRules.OK.equals(health.state()) ? 0 : 1) + health.openAbnormal(),
                 health == null ? null : health.state(),
-                respService.myPending(), accidentService.myPending(), chemService.myOverstock(), mocService.myTodo(),
+                respService.myPending(), accidentService.myPending(), chemService.myOverstock(), mocService.myTodo(), meetingService.myTodo(),
                 (int) messageService.unreadCount(me));
     }
 

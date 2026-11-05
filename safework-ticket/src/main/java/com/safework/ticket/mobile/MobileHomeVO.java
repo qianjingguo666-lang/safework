@@ -22,12 +22,13 @@ package com.safework.ticket.mobile;
  * @param accident       我还没完成的事故整改措施；没有菜单也没有措施为空
  * @param chem           我负责的危化品单元里超储的种数；不是单元负责人为空
  * @param moc            要我处理的变更（评估、审批、实施、检查、恢复）；没有菜单为空
+ * @param meeting        班前会：我当班组长今天还没开的班组数 + 我还没确认的；都不是为空
  * @param unread         未读消息
  */
 public record MobileHomeVO(Integer approve, Integer working, Integer rectify, Integer rectifyOverdue,
                            Integer assign, Integer verify, Integer riskDue, Integer check, Integer checkOverdue,
                            Integer ppe, Integer ppeExpired,
                            Integer health, String healthState,
-                           Integer resp, Integer accident, Integer chem, Integer moc,
+                           Integer resp, Integer accident, Integer chem, Integer moc, Integer meeting,
                            Integer unread) {
 }
