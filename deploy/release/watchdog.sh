@@ -6,7 +6,7 @@
 #   发一条测试消息到微信：  bash watchdog.sh test
 #
 # 安装：.env 里填 WECHAT_SENDKEY=（Server酱的 SendKey），然后 crontab -e 加一行
-#   */2 * * * * cd /opt/safework && bash watchdog.sh >> watchdog/watchdog.log 2>&1
+#   */2 * * * * cd /opt/safework && flock -n /tmp/sw-watchdog.lock bash watchdog.sh >> watchdog/watchdog.log 2>&1
 #
 # 检查项：网站首页、后端健康检查、4 个容器、磁盘、内存、数据库备份、演示数据恢复
 # 推送规则（不刷屏）：问题第一次出现推一次；问题没变每 60 分钟提醒一次；恢复正常推一次；每天 9 点推一条日报
@@ -55,8 +55,9 @@ main() {
     return 0
   fi
 
-  # 正在更新、恢复演示数据时后端会停一会儿，这时不检查，免得误报、误重启
-  if [ "$mode" = "check" ] && pgrep -f "demo-reset.sh|update.sh|start.sh|demo-baseline.sh" >/dev/null; then
+  # 正在更新、恢复演示数据时后端会停一会儿，这时不检查，免得误报、误重启。
+  # 只认 cd /opt/safework 后用 bash xxx.sh 启动的我们自己的脚本：阿里云云盾等插件也有叫 update.sh 的脚本，不能被它们骗过去
+  if [ "$mode" = "check" ] && pgrep -f "^bash (demo-reset|update|start|demo-baseline)\.sh" >/dev/null; then
     log "正在更新或恢复数据，跳过本次检查"
     return 0
   fi

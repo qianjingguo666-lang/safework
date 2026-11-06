@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
+#!# 阿里云镜像默认 swappiness=0：内存紧张时宁可反复读硬盘上的程序文件也不用交换区，服务器会卡死几个小时。改成 10
+echo 'vm.swappiness = 10' > /etc/sysctl.d/99-safework.conf
+sysctl -q -p /etc/sysctl.d/99-safework.conf
+/usr/bin/env bash
 # 新服务器初始化（Ubuntu 22.04 / 24.04），只需要运行一次：
 #   sudo bash deploy/server-setup.sh
 set -e

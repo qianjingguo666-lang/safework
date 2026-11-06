@@ -82,6 +82,7 @@ $r = Call PUT '/safety/cost/plan' @{ year = $year; revenue = 1200; carryOver = 5
 Check "预算超过可用额度：能保存，但有提示（$($r.data.warning)）" ($r.code -eq 200 -and $r.data.warning)
 $r = Call PUT '/safety/cost/plan' @{ year = $year; revenue = 1200; carryOver = 5000; remark = '自测'; budgets = @(@{ category = 'PPE'; amount = 1000 }) } $tTest
 Check '改成正常预算：没有提示' ($r.code -eq 200 -and -not $r.data.warning)
+foreach ($old in @((Call GET "/safety/cost/expense/page?year=$year&status=1&size=100" $null $tTest).data.records)) { Call PUT "/safety/cost/expense/$($old.id)/void" @{ reason = 'cleanup' } $tTest | Out-Null }
 $t0 = Report $tTest
 Check "应提 = 1000 × 4.5% + 200 × 2.25% = 49.5 万，可用 50 万（实际 $($t0.plan.accrueAmount) / $($t0.available)）" ([double]$t0.plan.accrueAmount -eq 495000 -and [double]$t0.available -eq 500000)
 Check '测试企业看不到演示企业的支出' ([double]$t0.used -lt [double]$rep.used -or [double]$rep.used -eq 0)
@@ -97,7 +98,6 @@ Check '金额必须大于 0' ($r.code -ne 200)
 $r = Call POST '/safety/cost/expense' @{ category = 'RISK_HAZARD'; title = '别人的隐患'; amount = 1; expenseDate = $today; hazardId = 2 } $tTest; Show $r
 Check '不能关联别的企业的隐患' ($r.code -ne 200)
 
-foreach ($old in @((Call GET "/safety/cost/expense/page?year=$year&status=1&size=100" $null $tTest).data.records)) { Call PUT "/safety/cost/expense/$($old.id)/void" @{ reason = 'cleanup' } $tTest | Out-Null }
 $r1 = Call POST '/safety/cost/expense' @{ category = 'PPE'; title = "自测安全帽 $tag"; amount = 800; expenseDate = $today; payee = '自测劳保'; voucherNo = "ZC-$tag" } $tTest
 Check "登记 800 元：没超预算，没有提示（编号 $($r1.data.id)）" ($r1.code -eq 200 -and -not $r1.data.warning)
 $used0 = [double](CatRow (Report $tTest) 'PPE').used

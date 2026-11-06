@@ -18,6 +18,9 @@ if ! swapon --show | grep -q .; then
 else
   echo "已有交换空间，跳过"
 fi
+# 阿里云镜像默认 swappiness=0：内存紧张时宁可反复读硬盘上的程序文件也不用交换区，服务器会卡死几个小时。改成 10
+echo 'vm.swappiness = 10' > /etc/sysctl.d/99-safework.conf
+sysctl -q -p /etc/sysctl.d/99-safework.conf
 
 echo "== 3. 安装 Docker =="
 if ! command -v docker >/dev/null 2>&1; then

@@ -96,7 +96,7 @@ cd /opt/safework
 nano .env                                  # 加一行 WECHAT_SENDKEY=你的SendKey（不要提交、不要截图）
 bash watchdog.sh test                      # 微信收到测试消息就说明配置好了
 bash watchdog.sh status                    # 只看状态，不推送
-(crontab -l 2>/dev/null; echo "*/2 * * * * cd /opt/safework && bash watchdog.sh >> watchdog/watchdog.log 2>&1") | crontab -
+(crontab -l 2>/dev/null; echo "*/2 * * * * cd /opt/safework && flock -n /tmp/sw-watchdog.lock bash watchdog.sh >> watchdog/watchdog.log 2>&1") | crontab -
 ```
 
 ### 打开演示模式（把地址公开给别人自测）
