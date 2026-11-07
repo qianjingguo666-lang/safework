@@ -145,7 +145,7 @@ async function submit() {
         failed++
       }
     }
-    ElMessage.success(failed ? `已上报，${failed} 张照片上传失败，可以在详情里重新上传` : '已上报，等待安全员指派整改')
+    ElMessage.success(failed ? `已上报，${failed} 张照片上传失败，可以在详情里重新上传` : '已上报，安全员确认后你会得到积分（一般隐患 10 分、重大隐患 50 分）')
     voiceRef.value?.cancel()
     router.replace(`/m/hazard/${id}`)
   } finally {

@@ -38,6 +38,8 @@ import com.safework.safety.mapper.PpeIssueMapper;
 import com.safework.safety.mapper.PpeItemMapper;
 import com.safework.safety.mapper.RiskPointMapper;
 import com.safework.safety.moc.MocService;
+import com.safework.safety.point.PointService;
+import com.safework.safety.point.PointVOs;
 import com.safework.safety.ppe.PpeRules;
 import com.safework.system.service.UserService;
 import com.safework.ticket.entity.StdAssessment;
@@ -86,6 +88,7 @@ public class StdEvidenceService {
     private final AccidentService accidentService;
     private final HealthService healthService;
     private final UserService userService;
+    private final PointService pointService;
     private final HazardMapper hazardMapper;
     private final CheckTaskMapper checkTaskMapper;
     private final EquipmentMapper equipmentMapper;
@@ -169,6 +172,14 @@ public class StdEvidenceService {
                 }
             }
             m.put("1.4", new Evidence(f, d));
+        }
+        // 1.5 安全文化建设（隐患随手拍积分）
+        {
+            PointVOs.Overview p = pointService.overview(today.getYear());
+            List<String> f = new ArrayList<>();
+            f.add("隐患随手拍：" + today.getYear() + " 年 " + p.reporters() + " 人上报的 " + p.yearHazards() + " 条隐患被确认，共发出积分 " + p.yearPoints() + " 分");
+            f.add("积分兑换奖品已发放 " + p.issued() + " 次（金额 " + CostRules.yuan(p.issuedAmount()) + " 元），待发放 " + p.pending() + " 次");
+            m.put("1.5", new Evidence(f, p.yearHazards() == 0 ? 1 : 0));
         }
         // 3.1 教育培训管理
         {

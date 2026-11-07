@@ -384,3 +384,18 @@ export const saveStdItem = (itemId, data) => request.put(`/safety/std/item/${ite
 export const finishStd = (id, summary) => request.post(`/safety/std/${id}/finish`, { summary })
 export const deleteStd = (id) => request.delete(`/safety/std/${id}`)
 export const stdToHazard = (itemId) => request.post(`/safety/std/item/${itemId}/hazard`)
+
+// 隐患随手拍积分
+export const pointOptions = () => request.get('/safety/point/options')
+export const pointMine = () => request.get('/safety/point/mine')
+export const pointRanking = (params) => request.get('/safety/point/ranking', { params })
+export const pointRewards = () => request.get('/safety/point/rewards')
+export const redeemReward = (id) => request.post(`/safety/point/rewards/${id}/redeem`)
+export const pointOverview = () => request.get('/safety/point/overview')
+export const pointRecords = (params) => request.get('/safety/point/records', { params })
+export const allPointRewards = () => request.get('/safety/point/rewards/all')
+export const pointRedeems = (status) => request.get('/safety/point/redeems', { params: { status } })
+export const adjustPoints = (data) => request.post('/safety/point/adjust', data)
+export const savePointReward = (id, data) => (id ? request.put(`/safety/point/rewards/${id}`, data) : request.post('/safety/point/rewards', data))
+export const pointRewardStatus = (id, status) => request.put(`/safety/point/rewards/${id}/status`, null, { params: { status } })
+export const handleRedeem = (id, data) => request.put(`/safety/point/redeems/${id}/handle`, data)

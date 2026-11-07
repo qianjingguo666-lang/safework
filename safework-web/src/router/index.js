@@ -35,6 +35,7 @@ const routes = [
       { path: 'resp/:id', component: () => import('@/views/mobile/RespView.vue'), meta: { title: '责任书', back: true, backTo: '/m/resp' } },
       { path: 'health', component: () => import('@/views/mobile/HealthView.vue'), meta: { title: '我的职业健康', back: true } },
       { path: 'ppe', component: () => import('@/views/mobile/PpeView.vue'), meta: { title: '我的劳保', back: true } },
+      { path: 'points', component: () => import('@/views/mobile/PointsView.vue'), meta: { title: '我的积分', back: true } },
       { path: 'checks', component: () => import('@/views/mobile/ChecksView.vue'), meta: { title: '安全检查', back: true } },
       { path: 'check/:id', component: () => import('@/views/mobile/CheckView.vue'), meta: { title: '检查任务', back: true, backTo: '/m/checks' } },
       { path: 'messages', component: () => import('@/views/mobile/MessagesView.vue'), meta: { title: '消息', tab: true } },

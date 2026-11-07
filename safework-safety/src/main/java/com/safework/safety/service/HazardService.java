@@ -18,6 +18,7 @@ import com.safework.safety.mapper.HazardMapper;
 import com.safework.system.entity.SysUser;
 import com.safework.system.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -43,6 +44,7 @@ public class HazardService {
     private final SpaceService spaceService;
     private final UserService userService;
     private final HazardNotifier notifier;
+    private final ApplicationEventPublisher publisher;
 
     /** 数据权限：处理人（安全员、管理员）看全部；其他人看自己上报的和指派给自己整改的 */
     public Page<Hazard> page(HazardQueryDTO q) {
@@ -181,6 +183,9 @@ public class HazardService {
         }
         writeLog(h, action, from, me, comment);
         notifier.afterFire(h, action, me, comment);
+        // 积分等其他模块在事务提交后处理（见 HazardFiredEvent 的监听者），不和隐患流程耦合
+        publisher.publishEvent(new HazardFiredEvent(h.getId(), h.getHazardNo(), h.getTitle(), h.getLevel(), action, h.getReporterId(), h.getReporterName(),
+                h.getRectifierId(), h.getRectifierName(), h.getDeadline(), h.getRectifyTime(), me.getNickname()));
     }
 
     private List<HazardAction> availableActions(Hazard h, Long me) {
