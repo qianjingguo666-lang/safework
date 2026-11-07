@@ -45,6 +45,7 @@
         </div>
       </div>
     </el-card>
+    <a class="icp" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">皖ICP备2026039732号-1</a>
   </div>
 </template>
 
@@ -127,7 +128,7 @@ onMounted(() => {
 <style scoped>
 .login-page {
   min-height: 100vh; display: flex; align-items: center; justify-content: center; gap: 80px;
-  padding: 24px 16px; box-sizing: border-box;
+  padding: 24px 16px 48px; position: relative; box-sizing: border-box;
   background: linear-gradient(135deg, #0f1b2d 0%, #1d3557 60%, #1f6feb 100%);
 }
 .intro { color: #fff; max-width: 420px; }
@@ -153,4 +154,9 @@ onMounted(() => {
 @media (max-width: 900px) {
   .intro { display: none; }
 }
+.icp {
+  position: absolute; left: 0; right: 0; bottom: 14px; text-align: center;
+  font-size: 12px; color: rgba(255, 255, 255, .6); text-decoration: none;
+}
+.icp:hover { color: #fff; }
 </style>

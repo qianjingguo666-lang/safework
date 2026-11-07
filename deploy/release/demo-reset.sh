@@ -34,7 +34,7 @@ docker compose exec -T redis redis-cli -a "$REDIS_PASSWORD" --no-auth-warning FL
 
 docker compose start backend
 for i in $(seq 1 60); do
-  if curl -fs "http://localhost:${WEB_PORT:-80}/api/actuator/health" 2>/dev/null | grep -q UP; then
+  if curl -fsk --max-time 10 "https://127.0.0.1/api/actuator/health" 2>/dev/null | grep -q UP; then
     echo "$(date '+%F %T') == 恢复完成，后端已启动 =="
     exit 0
   fi
