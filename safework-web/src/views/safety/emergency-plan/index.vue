@@ -24,6 +24,7 @@
               <template v-if="row.status === 1">
                 <el-tag size="small" :type="DRILL_STATES[row.drillState]?.type">{{ DRILL_STATES[row.drillState]?.label }}</el-tag>
                 <div v-if="row.nextDrillDue" class="due">应在 {{ row.nextDrillDue }} 前</div>
+                <el-tooltip v-if="row.reviseNote" :content="'演练评估意见：' + row.reviseNote"><el-tag size="small" type="warning" class="revise">待修订</el-tag></el-tooltip>
               </template>
               <el-tag v-else size="small" type="info">已停用</el-tag>
             </template>
@@ -46,29 +47,41 @@
           <el-select v-model="drillPlanId" clearable filterable placeholder="按预案筛选" style="width: 240px" @change="loadDrills">
             <el-option v-for="p in plans" :key="p.id" :label="`${p.planCode} ${p.title}`" :value="p.id" />
           </el-select>
+          <el-select v-model="drillStatus" clearable placeholder="状态" style="width: 110px" @change="loadDrills">
+            <el-option v-for="(v, k) in DRILL_STATUS" :key="k" :label="v.label" :value="k" />
+          </el-select>
           <div class="spacer" />
           <el-button v-if="canEdit" type="primary" icon="Plus" @click="openDrill()">安排演练</el-button>
         </div>
-        <el-table v-loading="drillLoading" :data="drills" stripe>
-          <el-table-column prop="title" label="演练名称" min-width="180" show-overflow-tooltip />
-          <el-table-column prop="planTitle" label="预案" min-width="180" show-overflow-tooltip />
-          <el-table-column label="形式" width="100"><template #default="{ row }">{{ DRILL_TYPES[row.drillType] }}</template></el-table-column>
-          <el-table-column label="时间" width="150"><template #default="{ row }">{{ (row.actualTime || row.planTime || '').slice(0, 16) }}</template></el-table-column>
-          <el-table-column prop="location" label="地点" min-width="120" show-overflow-tooltip />
-          <el-table-column label="参演" width="70"><template #default="{ row }">{{ row.participantCount ?? '-' }}</template></el-table-column>
-          <el-table-column label="状态" width="90">
-            <template #default="{ row }"><el-tag size="small" :type="DRILL_STATUS[row.status]?.type">{{ DRILL_STATUS[row.status]?.label }}</el-tag></template>
-          </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+        <el-table v-loading="drillLoading" :data="drills" stripe class="clickable" @row-click="(r) => openDetail(r.drill.id)">
+          <el-table-column label="演练名称" min-width="180" show-overflow-tooltip><template #default="{ row }">{{ row.drill.title }}</template></el-table-column>
+          <el-table-column label="预案" min-width="180" show-overflow-tooltip><template #default="{ row }">{{ row.drill.planTitle }}</template></el-table-column>
+          <el-table-column label="形式" width="90"><template #default="{ row }">{{ DRILL_TYPES[row.drill.drillType] }}</template></el-table-column>
+          <el-table-column label="时间" width="140"><template #default="{ row }">{{ (row.drill.actualTime || row.drill.planTime || '').slice(0, 16) }}</template></el-table-column>
+          <el-table-column label="参演" width="100">
             <template #default="{ row }">
-              <el-button v-if="row.status === 'DONE'" link type="primary" @click="viewDrill(row)">总结</el-button>
-              <template v-if="canEdit && row.status === 'PLANNED'">
-                <el-button link type="primary" @click="openComplete(row)">记录结果</el-button>
-                <el-button link type="danger" @click="cancelDrill(row)">取消</el-button>
-              </template>
+              <template v-if="row.drill.participantCount">{{ row.drill.participantCount }} 人</template>
+              <template v-else-if="row.participants">签到 {{ row.signed }}/{{ row.participants }}</template>
+              <template v-else>-</template>
             </template>
           </el-table-column>
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }"><el-tag size="small" :type="DRILL_STATUS[row.drill.status]?.type">{{ DRILL_STATUS[row.drill.status]?.label }}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="评估" width="120">
+            <template #default="{ row }">
+              <el-tag v-if="row.drill.grade" size="small" :type="DRILL_GRADE_TYPES[row.drill.grade]">{{ row.drill.totalScore }} · {{ row.drill.grade }}</el-tag>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="问题 / 已整改" width="110" align="center">
+            <template #default="{ row }">{{ row.problems ? `${row.problems} / ${row.hazards}` : '-' }}</template>
+          </el-table-column>
         </el-table>
+      </el-tab-pane>
+
+      <el-tab-pane label="年度演练计划" name="annual">
+        <DrillAnnual ref="annualRef" :can-edit="canEdit" @open="openDetail" @plan="(id) => openDrill({ id })" />
       </el-tab-pane>
     </el-tabs>
 
@@ -124,69 +137,26 @@
       </template>
     </el-dialog>
 
-    <!-- 安排演练 -->
-    <el-dialog v-model="drillVisible" title="安排演练" width="min(480px, 94vw)">
-      <el-form ref="drillRef" :model="drill" :rules="drillRules" label-width="80px">
-        <el-form-item label="预案" prop="planId">
-          <el-select v-model="drill.planId" filterable style="width: 100%" @change="onDrillPlan">
-            <el-option v-for="p in plans.filter((x) => x.status === 1)" :key="p.id" :label="`${p.planCode} ${p.title}`" :value="p.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="演练名称" prop="title"><el-input v-model="drill.title" maxlength="60" /></el-form-item>
-        <el-form-item label="形式" prop="drillType">
-          <el-radio-group v-model="drill.drillType"><el-radio v-for="(v, k) in DRILL_TYPES" :key="k" :value="k">{{ v }}</el-radio></el-radio-group>
-        </el-form-item>
-        <el-form-item label="计划时间" prop="planTime"><el-date-picker v-model="drill.planTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" /></el-form-item>
-        <el-form-item label="地点"><el-input v-model="drill.location" maxlength="100" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="drillVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveDrill">确定（通知应急小组）</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 记录演练结果 -->
-    <el-dialog v-model="completeVisible" title="记录演练结果" width="min(540px, 94vw)">
-      <el-form ref="completeRef" :model="done" :rules="completeRules" label-width="90px">
-        <el-form-item label="实际时间" prop="actualTime"><el-date-picker v-model="done.actualTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" /></el-form-item>
-        <el-form-item label="参演人数" prop="participantCount"><el-input-number v-model="done.participantCount" :min="1" :max="9999" /></el-form-item>
-        <el-form-item label="演练总结" prop="summary"><el-input v-model="done.summary" type="textarea" :rows="4" maxlength="2000" /></el-form-item>
-        <el-form-item label="发现问题"><el-input v-model="done.problems" type="textarea" :rows="3" maxlength="2000" placeholder="如：空气呼吸器 1 台压力不足；集合点标识不清" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="completeVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveComplete">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="drillViewVisible" :title="drillViewing?.title" width="min(540px, 94vw)">
-      <el-descriptions v-if="drillViewing" :column="1" border size="small">
-        <el-descriptions-item label="预案">{{ drillViewing.planTitle }}</el-descriptions-item>
-        <el-descriptions-item label="实际时间">{{ drillViewing.actualTime }}</el-descriptions-item>
-        <el-descriptions-item label="参演人数">{{ drillViewing.participantCount }}</el-descriptions-item>
-        <el-descriptions-item label="总结"><span class="pre">{{ drillViewing.summary }}</span></el-descriptions-item>
-        <el-descriptions-item label="发现问题"><span class="pre">{{ drillViewing.problems || '-' }}</span></el-descriptions-item>
-        <el-descriptions-item label="记录人">{{ drillViewing.recorderName }}</el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
+    <DrillForm v-model="drillVisible" :plans="plans" :data="drillEditing" :plan-id="drillForPlan" @saved="afterDrillSaved" />
+    <DrillDetail v-model="detailVisible" :id="detailId" @changed="onDrillChanged" @edit="editDrill" />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import {
-  cancelEmergencyDrill, completeEmergencyDrill, createEmergencyDrill, emergencyDrills, emergencyPlan, emergencyPlans,
-  emergencyPlanStatus, saveEmergencyPlan, userOptions
-} from '@/api'
-import { ACCIDENT_TYPES, DRILL_STATES, DRILL_STATUS, DRILL_TYPES, PLAN_TYPES } from '@/utils/dict'
+import { emergencyDrills, emergencyPlan, emergencyPlans, emergencyPlanStatus, saveEmergencyPlan, userOptions } from '@/api'
+import { ACCIDENT_TYPES, DRILL_GRADE_TYPES, DRILL_STATES, DRILL_STATUS, DRILL_TYPES, PLAN_TYPES } from '@/utils/dict'
+import DrillAnnual from './DrillAnnual.vue'
+import DrillDetail from './DrillDetail.vue'
+import DrillForm from './DrillForm.vue'
 
 const route = useRoute()
 const store = useUserStore()
 const canEdit = computed(() => store.hasPerm('emergency:plan:edit'))
-const tab = ref(route.query.tab === 'drill' ? 'drill' : 'plan')
+const tab = ref(['drill', 'annual'].includes(route.query.tab) ? route.query.tab : 'plan')
 const keyword = ref('')
 const loading = ref(false)
 const plans = ref([])
@@ -264,94 +234,58 @@ async function toggle(row) {
 const drillLoading = ref(false)
 const drills = ref([])
 const drillPlanId = ref(null)
+const drillStatus = ref('')
+const annualRef = ref()
 async function loadDrills() {
   drillLoading.value = true
   try {
-    drills.value = await emergencyDrills({ planId: drillPlanId.value || undefined })
+    drills.value = await emergencyDrills({ planId: drillPlanId.value || undefined, status: drillStatus.value || undefined })
   } finally {
     drillLoading.value = false
   }
 }
 function onTab(name) {
   if (name === 'drill') loadDrills()
+  if (name === 'annual') nextTick(() => annualRef.value?.load())
 }
 
 const drillVisible = ref(false)
-const drillRef = ref()
-const drill = reactive({})
-const drillRules = {
-  planId: [{ required: true, message: '请选择演练的预案' }],
-  title: [{ required: true, message: '请填写演练名称', trigger: 'blur' }],
-  drillType: [{ required: true, message: '请选择演练形式' }],
-  planTime: [{ required: true, message: '请选择计划时间' }]
-}
+const drillEditing = ref(null)
+const drillForPlan = ref(null)
 function openDrill(row) {
-  Object.assign(drill, { planId: row?.id || null, title: row ? `${row.title}演练` : '', drillType: 'LIVE', planTime: '', location: '' })
+  drillEditing.value = null
+  drillForPlan.value = row?.id || null
   drillVisible.value = true
-  drillRef.value?.clearValidate()
 }
-function onDrillPlan(id) {
-  const p = plans.value.find((x) => x.id === id)
-  if (p && !drill.title) drill.title = `${p.title}演练`
+function editDrill(detail) {
+  drillEditing.value = detail
+  drillForPlan.value = null
+  detailVisible.value = false
+  drillVisible.value = true
 }
-async function saveDrill() {
-  await drillRef.value.validate()
-  saving.value = true
-  try {
-    await createEmergencyDrill(drill)
-    ElMessage.success('已安排，应急小组会收到通知')
-    drillVisible.value = false
-    tab.value = 'drill'
-    loadDrills()
-  } finally {
-    saving.value = false
-  }
+function afterDrillSaved() {
+  if (tab.value === 'plan') tab.value = 'drill'
+  refreshDrills()
+}
+function refreshDrills() {
+  loadDrills()
+  loadPlans()
+  if (tab.value === 'annual') annualRef.value?.load()
+}
+function onDrillChanged() {
+  refreshDrills()
 }
 
-const completeVisible = ref(false)
-const completeRef = ref()
-const done = reactive({})
-let completing = null
-const completeRules = {
-  actualTime: [{ required: true, message: '请填写实际演练时间' }],
-  participantCount: [{ required: true, message: '请填写参演人数' }],
-  summary: [{ required: true, message: '请填写演练总结', trigger: 'blur' }]
-}
-function openComplete(row) {
-  completing = row
-  Object.assign(done, { actualTime: row.planTime, participantCount: 5, summary: '', problems: '' })
-  completeVisible.value = true
-  completeRef.value?.clearValidate()
-}
-async function saveComplete() {
-  await completeRef.value.validate()
-  saving.value = true
-  try {
-    await completeEmergencyDrill(completing.id, done)
-    ElMessage.success('已记录，预案的上次演练时间已更新')
-    completeVisible.value = false
-    loadDrills()
-    loadPlans()
-  } finally {
-    saving.value = false
-  }
-}
-async function cancelDrill(row) {
-  await ElMessageBox.confirm(`取消演练「${row.title}」？`, '提示', { type: 'warning' })
-  await cancelEmergencyDrill(row.id)
-  ElMessage.success('已取消')
-  loadDrills()
-}
-const drillViewVisible = ref(false)
-const drillViewing = ref(null)
-function viewDrill(row) {
-  drillViewing.value = row
-  drillViewVisible.value = true
+const detailVisible = ref(false)
+const detailId = ref(null)
+function openDetail(id) {
+  detailId.value = id
+  detailVisible.value = true
 }
 
 onMounted(() => {
   loadPlans()
-  if (tab.value === 'drill') loadDrills()
+  onTab(tab.value)
 })
 watch(() => route.query.tab, (t) => {
   if (t === 'drill') {
@@ -364,6 +298,8 @@ watch(() => route.query.tab, (t) => {
 <style scoped>
 .warn-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; background: #fdf6ec; color: #b88230; font-size: 14px; }
 .due { color: #999; font-size: 12px; }
+.revise { margin-top: 4px; }
+.clickable :deep(tr) { cursor: pointer; }
 h4 { margin: 20px 0 10px; }
 .plan-content, .pre { white-space: pre-wrap; word-break: break-all; }
 .plan-content { padding: 12px; background: #fafafa; border: 1px solid #eee; border-radius: 6px; font-size: 14px; line-height: 1.8; }

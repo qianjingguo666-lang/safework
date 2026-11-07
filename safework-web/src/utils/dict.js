@@ -127,9 +127,14 @@ export const DRILL_STATES = {
 }
 export const DRILL_STATUS = {
   PLANNED: { label: '计划中', type: 'primary' },
-  DONE: { label: '已完成', type: 'success' },
+  DONE: { label: '待评估', type: 'warning' },
+  EVALUATED: { label: '已评估', type: 'success' },
   CANCELLED: { label: '已取消', type: 'info' }
 }
+export const DRILL_ROLES = { COMMAND: '指挥', RESCUE: '抢险救援', EVACUATE: '疏散警戒', MEDICAL: '医疗救护', SUPPORT: '后勤保障', OBSERVE: '观摩评估' }
+export const DRILL_PROBLEM_CATEGORIES = { PLAN: '预案本身', EQUIPMENT: '装备物资', TRAINING: '人员培训', ORGANIZE: '组织协调', OTHER: '其他' }
+export const DRILL_GRADE_TYPES = { 优秀: 'success', 良好: 'primary', 合格: 'warning', 不合格: 'danger' }
+export const DRILL_YEAR_STATES = { DONE: { label: '已达标', type: 'success' }, PLANNED: { label: '已安排', type: 'primary' }, MISSING: { label: '未安排', type: 'danger' } }
 export const DRILL_TYPES = { TABLETOP: '桌面推演', LIVE: '实战演练' }
 
 // 人员资质

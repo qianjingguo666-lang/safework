@@ -5,11 +5,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.common.exception.BizException;
 import com.safework.safety.entity.ConfinedSpace;
-import com.safework.safety.entity.EmergencyDrill;
 import com.safework.safety.entity.EmergencyEvent;
 import com.safework.safety.entity.EmergencyEventLog;
 import com.safework.safety.entity.EmergencyPlan;
-import com.safework.safety.mapper.EmergencyDrillMapper;
 import com.safework.safety.mapper.EmergencyEventLogMapper;
 import com.safework.safety.mapper.EmergencyEventMapper;
 import com.safework.safety.mapper.EmergencyPlanMapper;
@@ -37,7 +35,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 应急管理：预案库、事故快报与应急响应、应急演练。
+ * 应急管理：预案库、事故快报与应急响应（应急演练在 drill 包的 DrillService）。
  * <pre>
  * 事故快报 ──▶ 通知安全员（实时推送）
  *    │
@@ -60,7 +58,6 @@ public class EmergencyService {
     private final EmergencyPlanMapper planMapper;
     private final EmergencyEventMapper eventMapper;
     private final EmergencyEventLogMapper logMapper;
-    private final EmergencyDrillMapper drillMapper;
     private final SerialNoGenerator serialNo;
     private final SpaceService spaceService;
     private final UserService userService;
@@ -131,6 +128,9 @@ public class EmergencyService {
             p.setStatus(1);
             planMapper.insert(p);
         } else {
+            // 修改了预案，演练评估提出的修订意见就算处理了
+            p.setReviseNote(null);
+            p.setReviseTime(null);
             planMapper.updateById(p);
         }
         return p.getId();
@@ -288,70 +288,6 @@ public class EmergencyService {
         }
     }
 
-    // ============================== 演练 ==============================
-
-    public List<EmergencyDrill> drills(Long planId) {
-        return drillMapper.selectList(Wrappers.<EmergencyDrill>lambdaQuery()
-                .eq(planId != null, EmergencyDrill::getPlanId, planId)
-                .last("ORDER BY CASE status WHEN 'PLANNED' THEN 0 ELSE 1 END, plan_time DESC"));
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public Long createDrill(DrillSaveDTO dto) {
-        checkDict(dto.getDrillType(), Set.of("TABLETOP", "LIVE"), "演练形式");
-        EmergencyPlan plan = plan(dto.getPlanId());
-        EmergencyDrill d = new EmergencyDrill();
-        d.setPlanId(plan.getId());
-        d.setPlanTitle(plan.getTitle());
-        d.setTitle(dto.getTitle().trim());
-        d.setDrillType(dto.getDrillType());
-        d.setPlanTime(dto.getPlanTime());
-        d.setLocation(dto.getLocation());
-        d.setStatus("PLANNED");
-        drillMapper.insert(d);
-        List<Long> team = teamIds(plan);
-        if (!team.isEmpty()) {
-            messageService.send(team, MessageDraft.of(MessageCategory.NOTICE, BIZ_TYPE + "_DRILL", d.getId(),
-                    "应急演练安排：" + d.getTitle(),
-                    "演练时间 " + d.getPlanTime().format(HM) + (StringUtils.hasText(d.getLocation()) ? "，地点 " + d.getLocation() : "")
-                            + "，演练预案《" + plan.getTitle() + "》。请提前熟悉处置程序", "/safety/emergency-plan?tab=drill"));
-        }
-        return d.getId();
-    }
-
-    /** 完成演练：记录总结，更新预案的“最近演练时间” */
-    @Transactional(rollbackFor = Exception.class)
-    public void completeDrill(Long id, DrillCompleteDTO dto) {
-        EmergencyDrill d = loadDrill(id);
-        if (!"PLANNED".equals(d.getStatus())) {
-            throw new BizException("只有计划中的演练可以登记完成");
-        }
-        if (dto.getActualTime().isAfter(LocalDateTime.now().plusMinutes(5))) {
-            throw new BizException("实际演练时间不能晚于现在");
-        }
-        d.setStatus("DONE");
-        d.setActualTime(dto.getActualTime());
-        d.setParticipantCount(dto.getParticipantCount());
-        d.setSummary(dto.getSummary().trim());
-        d.setProblems(dto.getProblems());
-        d.setRecorderName(currentUser().getNickname());
-        drillMapper.updateById(d);
-        EmergencyPlan plan = planMapper.selectById(d.getPlanId());
-        if (plan != null && (plan.getLastDrillTime() == null || plan.getLastDrillTime().isBefore(dto.getActualTime()))) {
-            plan.setLastDrillTime(dto.getActualTime());
-            planMapper.updateById(plan);
-        }
-    }
-
-    public void cancelDrill(Long id) {
-        EmergencyDrill d = loadDrill(id);
-        if (!"PLANNED".equals(d.getStatus())) {
-            throw new BizException("只有计划中的演练可以取消");
-        }
-        d.setStatus("CANCELLED");
-        drillMapper.updateById(d);
-    }
-
     // ============================== 内部方法 ==============================
 
     private void markDrill(EmergencyPlan p) {
@@ -366,14 +302,6 @@ public class EmergencyService {
             throw new BizException(404, "事件不存在");
         }
         return e;
-    }
-
-    private EmergencyDrill loadDrill(Long id) {
-        EmergencyDrill d = drillMapper.selectById(id);
-        if (d == null) {
-            throw new BizException(404, "演练不存在");
-        }
-        return d;
     }
 
     private static void check(EmergencyEvent e, EmergencyRules.Action a) {
@@ -419,7 +347,7 @@ public class EmergencyService {
         return result;
     }
 
-    static List<Long> teamIds(EmergencyPlan plan) {
+    public static List<Long> teamIds(EmergencyPlan plan) {
         if (plan == null || !StringUtils.hasText(plan.getTeamUserIds())) {
             return List.of();
         }

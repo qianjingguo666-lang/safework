@@ -15,6 +15,8 @@ import com.safework.safety.chem.ChemService;
 import com.safework.safety.cost.CostService;
 import com.safework.safety.point.PointService;
 import com.safework.safety.injury.InjuryRules;
+import com.safework.safety.drill.DrillRules;
+import com.safework.safety.drill.DrillService;
 import com.safework.safety.injury.InjuryService;
 import com.safework.safety.cost.CostRules;
 import com.safework.safety.moc.MocService;
@@ -116,6 +118,7 @@ public class ScreenService {
     private final PointService pointService;
     private final VisitService visitService;
     private final InjuryService injuryService;
+    private final DrillService drillService;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -232,6 +235,9 @@ public class ScreenService {
                 .filter(s -> EmergencyRules.DRILL_NEVER.equals(s) || EmergencyRules.DRILL_OVERDUE.equals(s))
                 .count();
         add(list, "应急预案未按期演练", drillOverdue, "warning", "/safety/emergency-plan");
+        var drills = drillService.overview(today);
+        add(list, "应急演练没登记结果或超过 3 天没评估", drills.recordLate().size()
+                + drills.pendingEvaluate().stream().filter(d -> DrillRules.evaluateLate(d.getStatus(), d.getActualTime(), today)).count(), "warning", DrillService.LINK);
         // 红色的排在前面
         list.sort(Comparator.comparing(w -> "danger".equals(w.level()) ? 0 : 1));
         return list;

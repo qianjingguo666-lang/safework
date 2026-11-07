@@ -31,6 +31,11 @@ public class EmergencyPlan extends BaseEntity {
     private Integer status;
     private LocalDateTime lastDrillTime;
     private String updaterName;
+    /** 演练评估认为预案需要修订时的意见；修改预案后清空 */
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.IGNORED)
+    private String reviseNote;
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.IGNORED)
+    private LocalDateTime reviseTime;
 
     /** 演练状态（不存库） */
     @TableField(exist = false)

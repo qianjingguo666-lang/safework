@@ -5,8 +5,6 @@ import cn.dev33.satoken.annotation.SaMode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.safework.common.annotation.OperLog;
 import com.safework.common.core.R;
-import com.safework.safety.emergency.DrillCompleteDTO;
-import com.safework.safety.emergency.DrillSaveDTO;
 import com.safework.safety.emergency.EmergencyOverviewVO;
 import com.safework.safety.emergency.EmergencyService;
 import com.safework.safety.emergency.EventActionDTO;
@@ -14,7 +12,6 @@ import com.safework.safety.emergency.EventDetailVO;
 import com.safework.safety.emergency.EventQueryDTO;
 import com.safework.safety.emergency.EventReportDTO;
 import com.safework.safety.emergency.PlanSaveDTO;
-import com.safework.safety.entity.EmergencyDrill;
 import com.safework.safety.entity.EmergencyEvent;
 import com.safework.safety.entity.EmergencyPlan;
 import io.swagger.v3.oas.annotations.Operation;
@@ -142,41 +139,6 @@ public class EmergencyController {
     @PutMapping("/plan/{id}/status")
     public R<Void> planStatus(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
         service.changePlanStatus(id, body.get("status"));
-        return R.ok();
-    }
-
-    // ============================== 演练 ==============================
-
-    @SaCheckPermission(PERM_PLAN_LIST)
-    @Operation(summary = "演练列表（计划中的排在最前）")
-    @GetMapping("/drill/list")
-    public R<List<EmergencyDrill>> drills(@RequestParam(required = false) Long planId) {
-        return R.ok(service.drills(planId));
-    }
-
-    @OperLog(module = "应急管理", action = "安排演练")
-    @SaCheckPermission(EmergencyService.PERM_PLAN_EDIT)
-    @Operation(summary = "安排演练（通知应急小组）")
-    @PostMapping("/drill")
-    public R<Long> createDrill(@Valid @RequestBody DrillSaveDTO dto) {
-        return R.ok(service.createDrill(dto));
-    }
-
-    @OperLog(module = "应急管理", action = "登记演练完成")
-    @SaCheckPermission(EmergencyService.PERM_PLAN_EDIT)
-    @Operation(summary = "登记演练完成（更新预案的最近演练时间）")
-    @PostMapping("/drill/{id}/complete")
-    public R<Void> completeDrill(@PathVariable Long id, @Valid @RequestBody DrillCompleteDTO dto) {
-        service.completeDrill(id, dto);
-        return R.ok();
-    }
-
-    @OperLog(module = "应急管理", action = "取消演练")
-    @SaCheckPermission(EmergencyService.PERM_PLAN_EDIT)
-    @Operation(summary = "取消演练")
-    @PostMapping("/drill/{id}/cancel")
-    public R<Void> cancelDrill(@PathVariable Long id) {
-        service.cancelDrill(id);
         return R.ok();
     }
 }

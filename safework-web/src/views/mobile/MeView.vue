@@ -13,6 +13,7 @@
       <router-link v-if="store.hasPerm('training:my')" to="/training/my" class="m-row"><span>我的考试</span><el-icon><ArrowRight /></el-icon></router-link>
       <router-link v-if="store.hasPerm('visit:gate')" to="/m/gate" class="m-row"><span>门岗登记（外来人员和车辆）</span><el-icon><ArrowRight /></el-icon></router-link>
       <router-link to="/m/points" class="m-row"><span>我的积分（隐患随手拍）</span><el-icon><ArrowRight /></el-icon></router-link>
+      <router-link to="/m/drills" class="m-row"><span>应急演练（签到）</span><el-icon><ArrowRight /></el-icon></router-link>
       <router-link to="/m/health" class="m-row"><span>我的职业健康</span><el-icon><ArrowRight /></el-icon></router-link>
       <router-link to="/m/ppe" class="m-row"><span>我的劳保用品</span><el-icon><ArrowRight /></el-icon></router-link>
       <router-link to="/m/resp" class="m-row"><span>我的安全生产责任书</span><el-icon><ArrowRight /></el-icon></router-link>
