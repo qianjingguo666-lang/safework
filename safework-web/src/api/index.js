@@ -374,3 +374,13 @@ export const costExpenses = (params) => request.get('/safety/cost/expense/page',
 export const getCostExpense = (id) => request.get(`/safety/cost/expense/${id}`)
 export const saveCostExpense = (id, data) => (id ? request.put(`/safety/cost/expense/${id}`, data) : request.post('/safety/cost/expense', data))
 export const voidCostExpense = (id, reason) => request.put(`/safety/cost/expense/${id}/void`, { reason })
+
+// 安全生产标准化自评
+export const stdList = () => request.get('/safety/std/list')
+export const stdDetail = (id) => request.get(`/safety/std/${id}`)
+export const createStd = (data) => request.post('/safety/std', data, { timeout: 60000 })
+export const refreshStd = (id) => request.post(`/safety/std/${id}/refresh`, null, { timeout: 60000 })
+export const saveStdItem = (itemId, data) => request.put(`/safety/std/item/${itemId}`, data)
+export const finishStd = (id, summary) => request.post(`/safety/std/${id}/finish`, { summary })
+export const deleteStd = (id) => request.delete(`/safety/std/${id}`)
+export const stdToHazard = (itemId) => request.post(`/safety/std/item/${itemId}/hazard`)

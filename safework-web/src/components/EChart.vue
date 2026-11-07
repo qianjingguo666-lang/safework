@@ -5,12 +5,12 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts/core'
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { BarChart, LineChart, RadarChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, RadarComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 
 // 按需引入：只打包用到的图表类型，比整个 echarts 小一大半
-echarts.use([LineChart, BarChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
+echarts.use([LineChart, BarChart, RadarChart, GridComponent, LegendComponent, RadarComponent, TooltipComponent, CanvasRenderer])
 
 const props = defineProps({
   option: { type: Object, required: true },
