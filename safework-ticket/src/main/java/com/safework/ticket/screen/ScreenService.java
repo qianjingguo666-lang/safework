@@ -8,6 +8,7 @@ import com.safework.safety.health.HealthService;
 import com.safework.ticket.kpi.KpiService;
 import com.safework.ticket.entity.StdAssessment;
 import com.safework.ticket.std.StdService;
+import com.safework.ticket.visit.VisitService;
 import com.safework.ticket.resp.RespService;
 import com.safework.safety.accident.AccidentService;
 import com.safework.safety.chem.ChemService;
@@ -111,6 +112,7 @@ public class ScreenService {
     private final KpiService kpiService;
     private final StdService stdService;
     private final PointService pointService;
+    private final VisitService visitService;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -188,6 +190,8 @@ public class ScreenService {
         var health = healthService.compute(null, null, today);
         StdAssessment std = stdService.latestDone();
         add(list, "安全生产标准化超过 1 年没有自评", std == null || std.getFinishDate().isBefore(today.minusYears(1)) ? 1 : 0, "warning", StdService.LINK);
+        add(list, "外来人员超时未离厂", visitService.overstayed(today).size(), "warning", VisitService.LINK);
+        add(list, "危化品车辆入厂待审批", visitService.overview().pending(), "warning", VisitService.LINK);
         add(list, "积分兑换待发放", pointService.overview(today.getYear()).pending(), "warning", PointService.LINK);
         add(list, "年度安全目标红灯指标", kpiService.report(today.getYear()).red(), "danger", "/safety/kpi");
         add(list, "今天有人状态不好、不能上岗", meetingService.unfitToday(), "warning", "/safety/meeting");
