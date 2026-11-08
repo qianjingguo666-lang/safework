@@ -21,6 +21,7 @@ import com.safework.ticket.entity.WorkTicketLog;
 import com.safework.ticket.enums.TicketAction;
 import com.safework.ticket.enums.TicketStatus;
 import com.safework.ticket.enums.TicketType;
+import com.safework.ticket.jsa.JsaService;
 import com.safework.ticket.mapper.WorkTicketLogMapper;
 import com.safework.ticket.mapper.WorkTicketMapper;
 import com.safework.ticket.sign.SignatureImage;
@@ -55,6 +56,7 @@ public class TicketService {
     private final UserService userService;
     private final PermissionService permissionService;
     private final SpaceService spaceService;
+    private final JsaService jsaService;
     private final TicketNotifier notifier;
     private final ApprovalService approvalService;
     private final SignatureService signatureService;
@@ -377,6 +379,16 @@ public class TicketService {
         t.setGasLel(dto.getGasLel());
         t.setGasH2s(dto.getGasH2s());
         t.setGasCheckTime(dto.getGasCheckTime());
+        if (dto.getJsaId() != null) {
+            com.safework.ticket.entity.Jsa jsa = jsaService.checkUsable(dto.getJsaId(), dto.getTicketType());
+            t.setJsaId(jsa.getId());
+            t.setJsaNo(jsa.getJsaNo());
+            t.setJsaTitle(jsa.getTitle());
+        } else {
+            t.setJsaId(null);
+            t.setJsaNo(null);
+            t.setJsaTitle(null);
+        }
     }
 
     private WorkTicket load(Long id) {

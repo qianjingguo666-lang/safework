@@ -39,4 +39,6 @@ public class TicketSaveDTO {
     private BigDecimal gasLel;
     private BigDecimal gasH2s;
     private LocalDateTime gasCheckTime;
+    /** 引用的作业安全分析（已发布、作业类型一致或通用），可以不引用 */
+    private Long jsaId;
 }

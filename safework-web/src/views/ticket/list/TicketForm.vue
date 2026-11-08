@@ -53,6 +53,15 @@
       <el-form-item label="作业内容">
         <el-input v-model="form.workContent" type="textarea" :rows="2" />
       </el-form-item>
+      <el-form-item label="引用 JSA">
+        <div class="jsa-row">
+          <el-select v-model="form.jsaId" clearable filterable placeholder="选择已发布的作业安全分析（可选）" style="flex: 1">
+            <el-option v-for="x in jsaOptions" :key="x.id" :label="`${x.jsaNo} ${x.title}${x.ticketType ? '' : '（通用）'}`" :value="x.id" />
+          </el-select>
+          <el-button :disabled="!form.jsaId" @click="fillMeasures">带入控制措施</el-button>
+        </div>
+        <div v-if="!jsaOptions.length" class="unit">这类作业还没有已发布的 JSA，可以到【作业管理 → JSA 作业安全分析】编写</div>
+      </el-form-item>
       <el-form-item label="安全措施">
         <el-input v-model="form.safetyMeasures" type="textarea" :rows="3" placeholder="如：1. 切断物料并加盲板 2. 强制通风 3. 配备呼吸器" />
       </el-form-item>
@@ -97,7 +106,7 @@
 import { PICKER_POPPER } from '@/utils/picker'
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { certTicketCheck, contractorOptions, createTicket, listGuardians, spaceOptions, updateTicket } from '@/api'
+import { certTicketCheck, contractorOptions, createTicket, jsaUsable, listGuardians, spaceOptions, updateTicket } from '@/api'
 import { TICKET_TYPES } from '@/utils/dict'
 
 const emit = defineEmits(['saved'])
@@ -117,7 +126,7 @@ const nowStr = () => {
 const empty = () => ({
   ticketType: 'CONFINED_SPACE', spaceId: null, title: '', location: '', planRange: [], guardianId: null,
   byContractor: false, contractorId: null, contractorWorkerIds: [],
-  workContent: '', safetyMeasures: '', gasOxygen: null, gasLel: null, gasH2s: null, gasCheckTime: nowStr()
+  workContent: '', safetyMeasures: '', gasOxygen: null, gasLel: null, gasH2s: null, gasCheckTime: nowStr(), jsaId: null
 })
 const form = reactive(empty())
 const gasRequired = computed(() => TICKET_TYPES[form.ticketType]?.gas)
@@ -161,6 +170,26 @@ watch(() => [visible.value, form.ticketType, form.guardianId, form.planRange?.[1
     if (seq === checkSeq) certProblems.value = []
   }
 })
+
+// ---------------- 引用 JSA ----------------
+const jsaOptions = ref([])
+async function loadJsa() {
+  try {
+    jsaOptions.value = await jsaUsable(form.ticketType)
+  } catch {
+    jsaOptions.value = []
+  }
+  if (form.jsaId && !jsaOptions.value.some((x) => x.id === form.jsaId)) form.jsaId = null
+}
+watch(() => [visible.value, form.ticketType], ([v]) => { if (v) loadJsa() })
+function fillMeasures() {
+  const x = jsaOptions.value.find((o) => o.id === form.jsaId)
+  if (!x) return
+  const lines = x.steps.map((st, i) => `${i + 1}. ${st.step}：${st.controls}`)
+  if (x.ppe) lines.push(`防护用品：${x.ppe}`)
+  form.safetyMeasures = (form.safetyMeasures ? form.safetyMeasures.trim() + '\n' : '') + lines.join('\n')
+  ElMessage.success('已把 JSA 的控制措施带入安全措施，可以再按现场修改')
+}
 
 // 选择受限空间后自动带出位置
 function onSpace(id) {
@@ -222,4 +251,5 @@ defineExpose({ open })
 .cert-alert div { line-height: 1.7; }
 .cert-tip { color: #999; font-size: 12px; }
 .unit { margin-left: 8px; color: #999; font-size: 12px; white-space: nowrap; }
+.jsa-row { display: flex; gap: 8px; width: 100%; }
 </style>

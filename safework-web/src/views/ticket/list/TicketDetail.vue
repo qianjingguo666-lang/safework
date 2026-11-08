@@ -79,7 +79,15 @@
         <el-descriptions-item label="审批人" :span="2">{{ t.approverName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="作业内容" :span="2">{{ t.workContent || '-' }}</el-descriptions-item>
         <el-descriptions-item label="安全措施" :span="2"><span class="pre">{{ t.safetyMeasures || '-' }}</span></el-descriptions-item>
+        <el-descriptions-item label="作业安全分析" :span="2">
+          <template v-if="t.jsaId">
+            {{ t.jsaNo }} {{ t.jsaTitle }}
+            <el-button link type="primary" @click="toggleJsa">{{ jsaSteps ? '收起' : '查看步骤和控制措施' }}</el-button>
+          </template>
+          <span v-else class="muted-jsa">没有引用 JSA</span>
+        </el-descriptions-item>
       </el-descriptions>
+      <StepTable v-if="jsaSteps" :steps="jsaSteps" class="jsa-steps" />
 
       <template v-if="TICKET_TYPES[t.ticketType]?.gas">
         <h4>气体检测</h4>
@@ -149,7 +157,8 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getTicket, reviewTicket, ticketAction } from '@/api'
+import { getTicket, jsaDetail, reviewTicket, ticketAction } from '@/api'
+import StepTable from '@/views/ticket/jsa/StepTable.vue'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import SignaturePad from '@/components/SignaturePad.vue'
 import { useRouter } from 'vue-router'
@@ -161,6 +170,14 @@ const visible = ref(false)
 const loading = ref(false)
 const busy = ref('')
 const t = ref(null)
+const jsaSteps = ref(null)
+async function toggleJsa() {
+  if (jsaSteps.value) {
+    jsaSteps.value = null
+    return
+  }
+  jsaSteps.value = (await jsaDetail(t.value.jsaId)).steps
+}
 const logs = ref([])
 const actions = ref([])
 const approval = ref(null)
@@ -201,6 +218,7 @@ async function open(id) {
   loading.value = true
   try {
     const d = await getTicket(id)
+    if (t.value?.id !== d.ticket.id) jsaSteps.value = null
     t.value = d.ticket
     logs.value = d.logs
     actions.value = d.actions
@@ -349,4 +367,6 @@ h4 { margin: 20px 0 10px; }
 .ai-tip { margin-top: 8px; }
 .refs { margin-top: 8px; }
 .muted { color: #999; font-size: 12px; }
+.muted-jsa { color: #999; }
+.jsa-steps { margin-top: 10px; }
 </style>

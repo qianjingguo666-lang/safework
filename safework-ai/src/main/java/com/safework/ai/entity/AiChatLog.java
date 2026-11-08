@@ -25,6 +25,8 @@ public class AiChatLog {
     public static final String EMERGENCY = "EMERGENCY";
     /** 班前会安全要点 */
     public static final String MEETING = "MEETING";
+    /** JSA 作业安全分析起草 */
+    public static final String JSA = "JSA";
 
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;

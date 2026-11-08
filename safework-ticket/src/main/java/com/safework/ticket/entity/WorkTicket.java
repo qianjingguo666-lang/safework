@@ -51,6 +51,13 @@ public class WorkTicket extends BaseEntity {
     private String contractorWorkerNames;
     private Long approverId;
     private String approverName;
+    /** 引用的作业安全分析（JSA） */
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private Long jsaId;
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private String jsaNo;
+    @TableField(updateStrategy = FieldStrategy.IGNORED)
+    private String jsaTitle;
 
     /** 氧含量 %VOL */
     private BigDecimal gasOxygen;

@@ -439,3 +439,13 @@ export const commitBoard = (date) => request.get('/safety/commit/board', { param
 export const commitHistory = (month) => request.get('/safety/commit/history', { params: { month } })
 export const commitJudge = (data) => request.post('/safety/commit/judge', data)
 export const commitSign = (signImage) => request.post('/safety/commit/sign', { signImage })
+
+// 作业安全分析 JSA
+export const jsaOverview = () => request.get('/ticket/jsa/overview')
+export const jsaPage = (params) => request.get('/ticket/jsa/page', { params })
+export const jsaUsable = (ticketType) => request.get('/ticket/jsa/usable', { params: { ticketType } })
+export const jsaDetail = (id) => request.get(`/ticket/jsa/${id}`)
+export const saveJsa = (id, data) => (id ? request.put(`/ticket/jsa/${id}`, data) : request.post('/ticket/jsa', data))
+export const jsaAction = (id, action, data) => request.post(`/ticket/jsa/${id}/${action}`, data || {})
+export const deleteJsa = (id) => request.delete(`/ticket/jsa/${id}`)
+export const jsaAiDraft = (data) => request.post('/ai/jsa/draft', data, { timeout: 90000 })
