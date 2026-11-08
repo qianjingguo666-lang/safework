@@ -17,6 +17,7 @@ import com.safework.safety.point.PointService;
 import com.safework.safety.injury.InjuryRules;
 import com.safework.safety.drill.DrillRules;
 import com.safework.safety.drill.DrillService;
+import com.safework.ticket.commit.CommitService;
 import com.safework.safety.injury.InjuryService;
 import com.safework.safety.cost.CostRules;
 import com.safework.safety.moc.MocService;
@@ -119,6 +120,7 @@ public class ScreenService {
     private final VisitService visitService;
     private final InjuryService injuryService;
     private final DrillService drillService;
+    private final CommitService commitService;
 
     public ScreenVO overview() {
         LocalDateTime now = LocalDateTime.now();
@@ -235,6 +237,8 @@ public class ScreenService {
                 .filter(s -> EmergencyRules.DRILL_NEVER.equals(s) || EmergencyRules.DRILL_OVERDUE.equals(s))
                 .count();
         add(list, "应急预案未按期演练", drillOverdue, "warning", "/safety/emergency-plan");
+        var commit = commitService.overview(now);
+        add(list, "今天的安全风险研判承诺还没公告", commit.commitLate() ? 1 : 0, "danger", CommitService.LINK);
         var drills = drillService.overview(today);
         add(list, "应急演练没登记结果或超过 3 天没评估", drills.recordLate().size()
                 + drills.pendingEvaluate().stream().filter(d -> DrillRules.evaluateLate(d.getStatus(), d.getActualTime(), today)).count(), "warning", DrillService.LINK);

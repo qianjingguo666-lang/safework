@@ -48,7 +48,7 @@ safework-common ← safework-system ← safework-safety ← safework-ticket ← 
                                                     ↖ safework-training ↗
 ```
 - `safework-safety`：受限空间、隐患、风险、应急、资质(cert)、承包商(contractor)、设备(equipment)、安全检查(check)、劳保用品(ppe)、职业健康(health，岗位复用 ppe_post)、事故调查(accident，结案后通过 Spring 事件让 safework-ai 的 AccidentCaseListener 写知识库)、危险化学品(chem，重大危险源辨识 GB 18218)、变更管理(moc，状态机 MocRules.Action + 审批轮次)、班前会(meeting；AI 起草要点在 safework-ai 的 MeetingTipService)、工伤管理(injury，状态机 InjuryRules.Action，30 日申请认定倒计时)、应急演练(drill，参演签到、AQ/T 9009 评估、问题转隐患；接口仍在 /safety/emergency/drill 下)
-- `safework-ticket`：作业票、审批流、打印验真、大屏(screen)、手机首页(mobile)、安全生产责任制(resp，岗位复用 ppe_post)、安全目标考核(kpi，依赖 safety + training，从各模块自动统计)、标准化自评(std，从各模块取证)、外来人员入厂(visit，复用 sign 包的签名校验)
+- `safework-ticket`：作业票、审批流、打印验真、大屏(screen)、手机首页(mobile)、安全生产责任制(resp，岗位复用 ppe_post)、安全目标考核(kpi，依赖 safety + training，从各模块自动统计)、标准化自评(std，从各模块取证)、外来人员入厂(visit，复用 sign 包的签名校验)、风险研判承诺(commit，主要负责人手写签名，承诺时把系统统计固定下来)
 - 数据库脚本：`safework-server/src/main/resources/db/migration/V1~V29`
 
 ## 4. 代码约定（新代码照着现有模块写）
@@ -59,10 +59,10 @@ safework-common ← safework-system ← safework-safety ← safework-ticket ← 
 2. **多租户**：业务表都有 `tenant_id`，SQL 里**不要手写租户条件**，租户插件自动加。定时任务没有登录上下文，用 `TenantJobHelper.forEachActiveTenant(...)` 按企业逐个执行。
 3. **权限两层**：接口上 `@SaCheckPermission("xxx:yyy")` 管“有没有这个功能”；Service 里判断“是不是本人的单据”。越权查看返回 404（不暴露数据是否存在）。
 4. **Long 会被序列化成字符串**（全局配置，防止 JS 丢精度）。返回给前端做加减比较的**计数用 Integer**；PS1 测试里比较数字要先 `[int]` 转换。
-5. **Flyway**：已执行的脚本**绝对不能修改**（会校验失败启动不了），改表就新增下一个版本。**下一个版本号是 V32**。
-6. **菜单 ID**：顶级 2 作业管理、3 安全管理、4 AI、6 数据看板、7 安全培训、8 安全大屏；安全管理下面已用到 **322**（工伤管理，排序 19；外来人员入厂排序 18；随手拍积分排序 2；安全目标、安全投入、标准化自评排序都是 0，放在最前，同排序按 ID），新页面从 **323** 开始，按钮 ID 是页面 ID×10+序号（如 3231）。新菜单要：迁移脚本插入 `sys_menu` + 更新 `sys_tenant_package.menu_ids` + 给已有企业的角色插 `sys_role_menu`，同时更新 `PresetRoles.java`（新开通企业的预置角色）。前端左侧菜单图标在 `Layout.vue` 的 `ICONS` 里加。
+5. **Flyway**：已执行的脚本**绝对不能修改**（会校验失败启动不了），改表就新增下一个版本。**下一个版本号是 V33**。
+6. **菜单 ID**：顶级 2 作业管理、3 安全管理、4 AI、6 数据看板、7 安全培训、8 安全大屏；安全管理下面已用到 **323**（风险研判承诺，排序 0；工伤管理排序 19；外来人员入厂排序 18；随手拍积分排序 2；安全目标、安全投入、标准化自评排序都是 0，放在最前，同排序按 ID），新页面从 **324** 开始，按钮 ID 是页面 ID×10+序号（如 3241）。新菜单要：迁移脚本插入 `sys_menu` + 更新 `sys_tenant_package.menu_ids` + 给已有企业的角色插 `sys_role_menu`，同时更新 `PresetRoles.java`（新开通企业的预置角色）。前端左侧菜单图标在 `Layout.vue` 的 `ICONS` 里加。
 7. **消息通知**：`MessageService.send(...)`；定时任务里用 `sendOnce(去重key, 时间窗, ...)` 防止重复提醒。消息 `link` 用电脑端地址（如 `/safety/check?detail=ID`），手机端在 `utils/mobile.js` 的 `mobileLink()` 里映射。
-8. **定时任务**：实现 `ScheduledJob` 接口自动注册。现在共 **24 个**任务；新增任务要同步改 `test-message.ps1` 里的 `$expectJobs`。**定时任务线程里没有登录用户**：任务调用的 service 方法不能用 `StpUtil`（会抛未登录异常），需要时加参数绕开（见 `ChemService.overstocked`）。
+8. **定时任务**：实现 `ScheduledJob` 接口自动注册。现在共 **25 个**任务；新增任务要同步改 `test-message.ps1` 里的 `$expectJobs`。**定时任务线程里没有登录用户**：任务调用的 service 方法不能用 `StpUtil`（会抛未登录异常），需要时加参数绕开（见 `ChemService.overstocked`）。
 9. **附件**：新业务类型实现 `BizAccessChecker`（参考 `CheckAccessChecker`）。
 10. **跨模块复用业务方法**：例如“不合格转隐患”统一调用 `HazardService.report(...)`，不要直接往隐患表插数据。
 11. **可选请求体的 POST 接口**：Spring 对空请求体会返回 415。参考 `TicketController.submit`：一个 `consumes = JSON` 且 `@RequestBody` 必填的方法 + 一个不带请求体的方法。
@@ -145,7 +145,7 @@ bash demo-baseline.sh   # 保存新的演示数据基线（每天 4:00 按它恢
 
 ## 8. 已完成的功能（截至 2026-11-05）
 
-登录安全与多租户、RBAC、作业票（多级审批、手写签名、打印验真、AI 预审）、受限空间与扫码、隐患闭环（语音 + AI 填表）、风险分级管控与巡检、应急管理、人员资质、承包商、设备设施、安全检查（V16）、劳保用品（V17）、职业健康（V18）、安全生产责任制（V19，代码在 safework-ticket 的 resp 包，因为考核要统计作业票）、事故调查“四不放过”（V20）、危险化学品与重大危险源（V21）、变更管理 MOC（V22）、班前会（V23）、智能体新工具（危化品、事故、变更、班前会、责任书）、安全目标与绩效考核（V24）、安全投入台账（V25，代码在 safework-safety 的 cost 包；智能体现在 18 个查询工具 + 3 个操作）、演示数据补充（V26：安全目标页面绿 2、黄 4、红 2）、安全生产标准化自评（V27，代码在 safework-ticket 的 std 包，因为要从各模块取证）、隐患随手拍积分（V28，safework-safety 的 point 包；隐患流转发布 HazardFiredEvent，积分模块事务提交后监听加分）、外来人员与车辆入厂（V29，safework-ticket 的 visit 包，复用作业票的手写签名校验）、工伤管理（V30，safework-safety 的 injury 包）、**应急演练升级（V31，最新，safework-safety 的 drill 包，演练代码从 EmergencyService 移出来了；智能体现在 20 个查询工具 + 3 个操作）**、培训考试与 AI 出题、AI 知识库问答与智能体、消息与定时任务、数据看板、安全大屏、手机端 H5、SaaS 平台端、演示模式、Docker 部署、备份、看门狗微信告警。
+登录安全与多租户、RBAC、作业票（多级审批、手写签名、打印验真、AI 预审）、受限空间与扫码、隐患闭环（语音 + AI 填表）、风险分级管控与巡检、应急管理、人员资质、承包商、设备设施、安全检查（V16）、劳保用品（V17）、职业健康（V18）、安全生产责任制（V19，代码在 safework-ticket 的 resp 包，因为考核要统计作业票）、事故调查“四不放过”（V20）、危险化学品与重大危险源（V21）、变更管理 MOC（V22）、班前会（V23）、智能体新工具（危化品、事故、变更、班前会、责任书）、安全目标与绩效考核（V24）、安全投入台账（V25，代码在 safework-safety 的 cost 包；智能体现在 18 个查询工具 + 3 个操作）、演示数据补充（V26：安全目标页面绿 2、黄 4、红 2）、安全生产标准化自评（V27，代码在 safework-ticket 的 std 包，因为要从各模块取证）、隐患随手拍积分（V28，safework-safety 的 point 包；隐患流转发布 HazardFiredEvent，积分模块事务提交后监听加分）、外来人员与车辆入厂（V29，safework-ticket 的 visit 包，复用作业票的手写签名校验）、工伤管理（V30，safework-safety 的 injury 包）、应急演练升级（V31，safework-safety 的 drill 包，演练代码从 EmergencyService 移出来了）、**安全风险研判与承诺公告（V32，最新，safework-ticket 的 commit 包，因为要统计作业票；智能体现在 21 个查询工具 + 3 个操作）**、培训考试与 AI 出题、AI 知识库问答与智能体、消息与定时任务、数据看板、安全大屏、手机端 H5、SaaS 平台端、演示模式、Docker 部署、备份、看门狗微信告警。
 
 详细设计全部写在 `README.md` 里。面试用的手动测试手册他在 Claude 里有一份文档。
 

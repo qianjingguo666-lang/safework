@@ -431,3 +431,11 @@ export const injuryAction = (id, action, data) => request.post(`/safety/injury/$
 export const injuryLeave = (id, data) => request.put(`/safety/injury/${id}/leave`, data)
 export const addInjuryCost = (id, data) => request.post(`/safety/injury/${id}/cost`, data)
 export const removeInjuryCost = (costId) => request.delete(`/safety/injury/cost/${costId}`)
+
+// 安全风险研判与承诺
+export const commitOptions = () => request.get('/safety/commit/options')
+export const commitToday = () => request.get('/safety/commit/today')
+export const commitBoard = (date) => request.get('/safety/commit/board', { params: { date } })
+export const commitHistory = (month) => request.get('/safety/commit/history', { params: { month } })
+export const commitJudge = (data) => request.post('/safety/commit/judge', data)
+export const commitSign = (signImage) => request.post('/safety/commit/sign', { signImage })
