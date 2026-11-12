@@ -83,7 +83,7 @@
           <el-descriptions-item label="纠正和预防措施">{{ detailData.observation.correctiveAction || '待制定' }}</el-descriptions-item>
           <el-descriptions-item label="上报人">{{ detailData.observation.reporterName }}</el-descriptions-item>
           <el-descriptions-item label="分析人">{{ detailData.observation.analystName || '待分析' }}</el-descriptions-item>
-          <el-descriptions-item v-if="detailData.observation.hazardId" label="关联隐患">
+          <el-descriptions-item v-if="detailData.canManage && detailData.observation.hazardId" label="关联隐患">
             <el-button link type="primary" @click="router.push('/safety/hazard?detail=' + detailData.observation.hazardId)">打开隐患 #{{ detailData.observation.hazardId }}</el-button>
           </el-descriptions-item>
         </el-descriptions>
