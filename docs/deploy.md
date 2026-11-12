@@ -115,7 +115,30 @@ bash demo-baseline.sh
 - 发布新版本不用重新保存基线：恢复后后端启动时 Flyway 会自动执行新增的数据库版本
 - 手动恢复一次：`bash demo-reset.sh`（停机约 1 分钟，所有人需要重新登录）
 
-## 四、日常运维
+## 四、HTTPS 证书续期与检查
+
+SafeWork 使用 Certbot 管理 `/etc/letsencrypt/live/qianjingguo.asia/` 证书。打包发布时会把 Nginx 续期钩子带入发布包；服务器运行新版 `update.sh` 且检测到证书后，会安装到 Certbot 的 deploy-hook 目录。证书成功续期后，钩子会重载 SafeWork 的 Nginx 容器，让它加载新证书。
+
+首次发布包含钩子的版本后，检查 Certbot 的自动续期定时器并验证续期流程：
+
+```bash
+systemctl list-timers --all | grep -Ei 'certbot|letsencrypt'
+certbot renew --dry-run
+certbot renew --dry-run --run-deploy-hooks
+```
+
+Certbot 安装通常会配置 systemd timer 或 cron 定期运行续期。确认上面的定时器存在且处于启用状态；如果没有定时器，应按当前 Certbot 安装方式启用自动续期任务。第二条命令验证签发验证流程，第三条还会运行续期钩子。
+
+手动检查当前证书到期时间和 30 天内到期状态：
+
+```bash
+openssl x509 -enddate -noout -in /etc/letsencrypt/live/qianjingguo.asia/fullchain.pem
+openssl x509 -checkend 2592000 -noout -in /etc/letsencrypt/live/qianjingguo.asia/fullchain.pem
+```
+
+第二条命令退出码为 0 表示证书有效期超过 30 天；非 0 表示需要检查续期任务和 Certbot 日志。
+
+## 五、日常运维
 
 | 操作 | 命令 |
 |---|---|
@@ -125,7 +148,7 @@ bash demo-baseline.sh
 | 备份数据库 | `bash deploy/backup.sh` |
 | 重启某个服务 | `docker compose -f docker-compose.prod.yml restart backend` |
 
-## 五、注意
+## 六、注意
 
 - 数据库表结构由 **Flyway** 管理：后端启动时自动执行 `db/migration` 里新增的版本脚本，发布新版本只需要 `bash deploy/update.sh`，**不能删数据卷重建**（会丢数据）。执行记录可以查 `flyway_schema_history` 表
 - 后端日志同时写到数据卷 `backend-logs`（`/app/logs/safework.log`，单文件 20MB 滚动、保留 14 天）。用户报错误编号时：`docker compose -f docker-compose.prod.yml exec backend grep 错误编号 /app/logs/safework.log`
