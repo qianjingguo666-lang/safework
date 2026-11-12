@@ -457,3 +457,12 @@ export const safetyObservationDetail = (id) => request.get(`/safety/observation/
 export const reportSafetyObservation = (data) => request.post('/safety/observation', data)
 export const analyzeSafetyObservation = (id, data) => request.put(`/safety/observation/${id}/analysis`, data)
 export const closeSafetyObservation = (id) => request.post(`/safety/observation/${id}/close`)
+
+
+// ---------- 作业计划管理 ----------
+export const jobPlanOptions = () => request.get('/ticket/plan/options')
+export const jobPlanPage = (params) => request.get('/ticket/plan/page', { params })
+export const jobPlanDetail = (id) => request.get(`/ticket/plan/${id}`)
+export const saveJobPlan = (data) => request.post('/ticket/plan', data)
+export const updateJobPlan = (id, data) => request.put(`/ticket/plan/${id}`, data)
+export const jobPlanAction = (id, action) => request.post(`/ticket/plan/${id}/${action}`)
