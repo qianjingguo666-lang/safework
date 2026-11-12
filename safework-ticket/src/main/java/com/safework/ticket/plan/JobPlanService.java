@@ -45,7 +45,7 @@ public class JobPlanService {
     public JobPlan detail(Long id) {
         JobPlan plan = mapper.selectById(id);
         if (plan == null) throw new BizException("作业计划不存在");
-        if (!StpUtil.hasPermission(PERM_MANAGE) && !StpUtil.getLoginIdAsLong().equals(plan.getResponsibleId())) {
+        if (!StpUtil.hasPermission(PERM_MANAGE) && !Long.valueOf(StpUtil.getLoginIdAsLong()).equals(plan.getResponsibleId())) {
             throw new BizException("作业计划不存在");
         }
         return plan;
