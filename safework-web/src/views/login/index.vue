@@ -45,7 +45,10 @@
         </div>
       </div>
     </el-card>
-    <a class="icp" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">皖ICP备2026039732号-1</a>
+    <div class="filing-links">
+      <a class="icp" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">皖ICP备2026039732号-1</a>
+      <a class="police-filing" href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=34072202000329" target="_blank" rel="noopener noreferrer"><img src="https://www.beian.gov.cn/img/ghs.png" alt="" />皖公网安备 34072202000329 号</a>
+    </div>
   </div>
 </template>
 
@@ -154,9 +157,8 @@ onMounted(() => {
 @media (max-width: 900px) {
   .intro { display: none; }
 }
-.icp {
-  position: absolute; left: 0; right: 0; bottom: 14px; text-align: center;
-  font-size: 12px; color: rgba(255, 255, 255, .6); text-decoration: none;
-}
-.icp:hover { color: #fff; }
+.filing-links { position: absolute; left: 0; right: 0; bottom: 14px; display: flex; justify-content: center; align-items: center; gap: 18px; flex-wrap: wrap; }
+.icp, .police-filing { font-size: 12px; color: rgba(255, 255, 255, .72); text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+.police-filing img { width: 16px; height: 16px; object-fit: contain; }
+.icp:hover, .police-filing:hover { color: #fff; }
 </style>
