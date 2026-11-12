@@ -131,7 +131,11 @@ const loading = ref(false)
 const t = ref(null)
 const logs = ref([])
 const actions = ref([])
-const approval = ref(null)\nconst briefing = ref(null)\nconst briefingPad = ref()\nconst briefingSigning = ref(false)\nconst mineBriefing = computed(() => briefing.value?.attendees?.find((a) => a.mine))
+const approval = ref(null)
+const briefing = ref(null)
+const briefingPad = ref()
+const briefingSigning = ref(false)
+const mineBriefing = computed(() => briefing.value?.attendees?.find((a) => a.mine))
 // 按钮由后端返回的 actions 决定；修改作业票表单太复杂，留在电脑端
 const ORDER = ['APPROVE', 'START', 'COMPLETE', 'SUBMIT', 'REJECT', 'CANCEL']
 const mobileActions = computed(() => ORDER.filter((a) => actions.value.includes(a)))
@@ -166,7 +170,8 @@ async function load() {
     t.value = d.ticket
     logs.value = d.logs
     actions.value = d.actions
-    approval.value = d.approval\n    briefing.value = await workBriefingByTicket(route.params.id)
+    approval.value = d.approval
+    briefing.value = await workBriefingByTicket(route.params.id)
   } finally {
     loading.value = false
   }
@@ -223,4 +228,8 @@ async function submit() {
 .node.APPROVED i { background: #67c23a; color: #fff; }
 .node.REJECTED i { background: #f56c6c; color: #fff; }
 .center { text-align: center; padding: 8px 0 20px; }
- .briefing-snapshot { white-space: pre-wrap; word-break: break-word; font: inherit; line-height: 1.6; background: #f6f8fa; padding: 10px; border-radius: 6px; }\n.briefing-person { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f0f0f0; }\n.briefing-sign { margin-top: 12px; }\n.briefing-button { width: 100%; margin-top: 10px; }\n</style>
+ .briefing-snapshot { white-space: pre-wrap; word-break: break-word; font: inherit; line-height: 1.6; background: #f6f8fa; padding: 10px; border-radius: 6px; }
+.briefing-person { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f0f0f0; }
+.briefing-sign { margin-top: 12px; }
+.briefing-button { width: 100%; margin-top: 10px; }
+</style>
