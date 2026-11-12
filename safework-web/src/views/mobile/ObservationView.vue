@@ -57,7 +57,7 @@
           <p><b>立即措施：</b>{{ detailData.observation.immediateAction || '暂无' }}</p>
           <p><b>原因分析：</b>{{ detailData.observation.rootCause || '待分析' }}</p>
           <p><b>纠正和预防措施：</b>{{ detailData.observation.correctiveAction || '待制定' }}</p>
-          <el-button v-if="detailData.observation.hazardId" type="primary" plain @click="router.push('/m/hazard/' + detailData.observation.hazardId)">查看关联隐患</el-button>
+          <el-button v-if="detailData.canManage && detailData.observation.hazardId" type="primary" plain @click="router.push('/m/hazard/' + detailData.observation.hazardId)">查看关联隐患</el-button>
           <div v-if="detailData.canManage && detailData.observation.status !== 'CLOSED'" class="actions">
             <el-button type="primary" @click="openAnalysis">分析 / 更新措施</el-button>
             <el-button v-if="detailData.canClose" type="success" @click="closeObservation">关闭记录</el-button>
