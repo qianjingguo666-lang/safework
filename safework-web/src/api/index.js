@@ -449,3 +449,11 @@ export const saveJsa = (id, data) => (id ? request.put(`/ticket/jsa/${id}`, data
 export const jsaAction = (id, action, data) => request.post(`/ticket/jsa/${id}/${action}`, data || {})
 export const deleteJsa = (id) => request.delete(`/ticket/jsa/${id}`)
 export const jsaAiDraft = (data) => request.post('/ai/jsa/draft', data, { timeout: 90000 })
+
+
+// 未遂事件与安全观察
+export const safetyObservationPage = (params) => request.get('/safety/observation/page', { params })
+export const safetyObservationDetail = (id) => request.get(`/safety/observation/${id}`)
+export const reportSafetyObservation = (data) => request.post('/safety/observation', data)
+export const analyzeSafetyObservation = (id, data) => request.put(`/safety/observation/${id}/analysis`, data)
+export const closeSafetyObservation = (id) => request.post(`/safety/observation/${id}/close`)
