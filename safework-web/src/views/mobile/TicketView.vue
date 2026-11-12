@@ -27,6 +27,25 @@
         <div class="pre">{{ t.safetyMeasures || '-' }}</div>
       </div>
 
+      <div v-if="briefing" class="m-card">
+        <div class="m-item-head">
+          <h3>作业安全交底</h3>
+          <el-tag :type="briefing.briefing.status === 'COMPLETED' ? 'success' : 'warning'">
+            {{ briefing.briefing.status === 'COMPLETED' ? '全员已签' : '待签字' }}
+          </el-tag>
+        </div>
+        <pre class="briefing-snapshot">{{ briefing.briefing.contentSnapshot }}</pre>
+        <div v-for="a in briefing.attendees" :key="a.id" class="briefing-person">
+          <span>{{ a.participantName }} · {{ ({ APPLICANT: '作业负责人', GUARDIAN: '监护人', MEMBER: '作业人员' })[a.participantRole] }}</span>
+          <el-tag size="small" :type="a.signedTime ? 'success' : 'warning'">{{ a.signedTime ? '已签字' : '待签字' }}</el-tag>
+        </div>
+        <div v-if="mineBriefing && !mineBriefing.signedTime && briefing.briefing.status === 'PENDING'" class="briefing-sign">
+          <div class="m-muted">请确认理解作业风险和安全措施，并手写签字</div>
+          <SignaturePad ref="briefingPad" placeholder="用手指在这里签名" />
+          <el-button type="primary" class="briefing-button" :loading="briefingSigning" @click="signBriefing">签字确认</el-button>
+        </div>
+      </div>
+
       <div v-if="TICKET_TYPES[t.ticketType]?.gas" class="m-card">
         <h3>气体检测 <span v-if="t.gasCheckTime" class="m-muted">{{ shortTime(t.gasCheckTime) }}</span></h3>
         <div class="gas">
@@ -99,8 +118,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { getTicket, ticketAction } from '@/api'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getTicket, ticketAction, workBriefingByTicket, confirmWorkBriefing } from '@/api'
 import AttachmentPanel from '@/components/AttachmentPanel.vue'
 import SignaturePad from '@/components/SignaturePad.vue'
 import { TICKET_ACTIONS, TICKET_STATUS, TICKET_TYPES } from '@/utils/dict'
@@ -112,7 +131,7 @@ const loading = ref(false)
 const t = ref(null)
 const logs = ref([])
 const actions = ref([])
-const approval = ref(null)
+const approval = ref(null)\nconst briefing = ref(null)\nconst briefingPad = ref()\nconst briefingSigning = ref(false)\nconst mineBriefing = computed(() => briefing.value?.attendees?.find((a) => a.mine))
 // 按钮由后端返回的 actions 决定；修改作业票表单太复杂，留在电脑端
 const ORDER = ['APPROVE', 'START', 'COMPLETE', 'SUBMIT', 'REJECT', 'CANCEL']
 const mobileActions = computed(() => ORDER.filter((a) => actions.value.includes(a)))
@@ -126,6 +145,20 @@ const label = (a) => {
   return TICKET_ACTIONS[a] || ''
 }
 
+async function signBriefing() {
+  const signature = briefingPad.value?.toDataURL()
+  if (!signature) return ElMessage.warning('请先手写签名')
+  await ElMessageBox.confirm('确认已理解作业风险及控制措施，并提交本人签名吗？', '安全交底确认')
+  briefingSigning.value = true
+  try {
+    await confirmWorkBriefing(briefing.value.briefing.id, signature)
+    ElMessage.success('签字已提交')
+    briefing.value = await workBriefingByTicket(route.params.id)
+  } finally {
+    briefingSigning.value = false
+  }
+}
+
 async function load() {
   loading.value = true
   try {
@@ -133,7 +166,7 @@ async function load() {
     t.value = d.ticket
     logs.value = d.logs
     actions.value = d.actions
-    approval.value = d.approval
+    approval.value = d.approval\n    briefing.value = await workBriefingByTicket(route.params.id)
   } finally {
     loading.value = false
   }
@@ -190,4 +223,4 @@ async function submit() {
 .node.APPROVED i { background: #67c23a; color: #fff; }
 .node.REJECTED i { background: #f56c6c; color: #fff; }
 .center { text-align: center; padding: 8px 0 20px; }
-</style>
+ .briefing-snapshot { white-space: pre-wrap; word-break: break-word; font: inherit; line-height: 1.6; background: #f6f8fa; padding: 10px; border-radius: 6px; }\n.briefing-person { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f0f0f0; }\n.briefing-sign { margin-top: 12px; }\n.briefing-button { width: 100%; margin-top: 10px; }\n</style>
