@@ -28,7 +28,7 @@ public final class SafetyObservationRules {
     }
 
     public static String analysisError(String type, String cause, String action, boolean toHazard) {
-        if (!String.isBlank(type) && !TYPES.containsKey(type)) return "观察类型不正确";
+        if (!TYPES.containsKey(type)) return "观察类型不正确";
         if (cause == null || cause.isBlank()) return "请填写原因分析";
         if (action == null || action.isBlank()) return "请填写纠正和预防措施";
         if (toHazard && "GOOD_PRACTICE".equals(type)) return "安全观察不能转为隐患";
