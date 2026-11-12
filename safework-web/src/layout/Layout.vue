@@ -89,6 +89,12 @@
         <el-alert v-if="demoTip" :title="demoTip" type="info" show-icon :closable="true" class="expire-alert" />
         <el-alert v-if="expireWarning" :title="expireWarning" type="warning" show-icon :closable="true" class="expire-alert" />
         <router-view />
+        <footer class="site-footer">
+          <a href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=34072202000329" target="_blank" rel="noopener noreferrer">
+            <img src="https://www.beian.gov.cn/img/ghs.png" alt="" class="beian-icon" />
+            皖公网安备 34072202000329 号
+          </a>
+        </footer>
       </el-main>
     </el-container>
 
@@ -246,6 +252,10 @@ async function onCommand(cmd) {
 .spacer { flex: 1; }
 .user { display: flex; align-items: center; gap: 8px; cursor: pointer; outline: none; }
 .main { padding: 16px; display: flex; flex-direction: column; }
+.site-footer { margin-top: auto; padding: 14px 0 2px; text-align: center; color: #86909c; font-size: 12px; }
+.site-footer a { display: inline-flex; align-items: center; gap: 5px; color: inherit; text-decoration: none; }
+.site-footer a:hover { color: #409eff; }
+.beian-icon { width: 16px; height: 16px; object-fit: contain; }
 /* 内容区是纵向 flex：问答这类要占满剩余高度的页面用 flex: 1，不用再按横幅、标题栏的高度去算 */
 .main > :deep(*) { flex-shrink: 0; }
 .expire-alert { margin-bottom: 12px; }
