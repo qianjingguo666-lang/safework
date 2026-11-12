@@ -12,6 +12,7 @@ import com.safework.system.entity.SysUser;
 import com.safework.system.service.PermissionService;
 import com.safework.system.service.UserService;
 import com.safework.ticket.approval.ApprovalService;
+import com.safework.ticket.briefing.WorkBriefingService;
 import com.safework.ticket.dto.TicketActionDTO;
 import com.safework.ticket.dto.TicketDetailVO;
 import com.safework.ticket.dto.TicketQueryDTO;
@@ -59,6 +60,7 @@ public class TicketService {
     private final JsaService jsaService;
     private final TicketNotifier notifier;
     private final ApprovalService approvalService;
+    private final WorkBriefingService workBriefingService;
     private final SignatureService signatureService;
     private final CertService certService;
     private final ContractorService contractorService;
@@ -240,6 +242,9 @@ public class TicketService {
         WorkTicket t = load(id);
         requireGuardian(t, me);
         checkCanFire(t, TicketAction.START);
+        if (Integer.valueOf(1).equals(t.getBriefingRequired())) {
+            workBriefingService.requireComplete(t.getId());
+        }
         LocalDateTime now = LocalDateTime.now();
         if (now.isAfter(t.getPlanEndTime())) {
             throw new BizException("已超过计划结束时间，不能开工，请重新申请");
