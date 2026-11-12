@@ -151,7 +151,7 @@ onMounted(async () => {
     pageTickets({ current: 1, size: 100, status: 'APPROVED' }),
     userOptions()
   ])
-  approvedTickets.value = ticketPage.records || []
+  approvedTickets.value = (ticketPage.records || []).filter((t) => !t.briefingRequired)
   users.value = userList
   load()
 })
