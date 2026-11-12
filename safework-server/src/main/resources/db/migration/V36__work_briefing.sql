@@ -58,3 +58,12 @@ JOIN sys_menu m ON (
 )
 WHERE r.deleted = 0
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.id AND rm.menu_id = m.id);
+
+-- 任何拥有作业票查看权限的角色都能看到自己的交底并完成签字；服务层仍按参与人限制数据范围
+INSERT INTO sys_role_menu (id, tenant_id, role_id, menu_id)
+SELECT UUID_SHORT(), r.tenant_id, r.id, m.id
+FROM sys_role r
+JOIN sys_role_menu ticket_menu ON ticket_menu.role_id = r.id AND ticket_menu.menu_id = 200
+JOIN sys_menu m ON m.id IN (204, 2042)
+WHERE r.deleted = 0
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.id AND rm.menu_id = m.id);
