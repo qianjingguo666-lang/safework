@@ -10,7 +10,7 @@ public final class WorkBriefingRules {
     private WorkBriefingRules() {}
 
     public static boolean canStart(String status, int attendeeCount, int signedCount) {
-        return COMPLETED.equals(status) && attendeeCount > 0 && attendeeCount == signedCount;
+        return attendeeCount > 0 && attendeeCount == signedCount;
     }
 
     public static String snapshot(String ticketNo, String title, String ticketType, String location,
