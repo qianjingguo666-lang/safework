@@ -27,6 +27,7 @@ export function setPreferDesktop(v) {
 /** 消息里存的是电脑端链接，手机端有对应页面的换成手机端页面 */
 export function mobileLink(link) {
   if (!link) return null
+  if (link.startsWith('/safety/observation')) return '/m/observation'
   if (link.startsWith('/safety/ppe')) return '/m/ppe'
   if (link.startsWith('/safety/health')) return '/m/health'
   if (link.startsWith('/safety/resp')) return '/m/resp'
