@@ -466,3 +466,11 @@ export const jobPlanDetail = (id) => request.get(`/ticket/plan/${id}`)
 export const saveJobPlan = (data) => request.post('/ticket/plan', data)
 export const updateJobPlan = (id, data) => request.put(`/ticket/plan/${id}`, data)
 export const jobPlanAction = (id, action) => request.post(`/ticket/plan/${id}/${action}`)
+
+
+// ---------- 作业安全交底 ----------
+export const workBriefingPage = (params) => request.get('/ticket/briefing/page', { params })
+export const workBriefingDetail = (id) => request.get(`/ticket/briefing/${id}`)
+export const workBriefingByTicket = (ticketId) => request.get(`/ticket/briefing/by-ticket/${ticketId}`)
+export const createWorkBriefing = (data) => request.post('/ticket/briefing', data)
+export const confirmWorkBriefing = (id, signature) => request.post(`/ticket/briefing/${id}/confirm`, { signature })
