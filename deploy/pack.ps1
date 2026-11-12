@@ -35,7 +35,7 @@ if (-not (Test-Path (Join-Path $dist 'index.html'))) { throw "找不到 $dist\in
 
 Write-Host '== 3. 组装发布包 ==' -ForegroundColor Cyan
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
-New-Item -ItemType Directory -Path "$out/backend", "$out/web" | Out-Null
+New-Item -ItemType Directory -Path "$out/backend", "$out/web", "$out/renewal-hooks/deploy" | Out-Null
 
 # Linux 上运行的文件统一转成 LF 换行（Windows 换行的脚本在 Linux 上会报 $'\r': command not found）
 $utf8 = New-Object Text.UTF8Encoding $false
