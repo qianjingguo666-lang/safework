@@ -25,6 +25,12 @@ main() {
   tar -xzf "$pkg" -C "$PWD"
   echo "已解压，backend/app.jar 时间：$(date -r backend/app.jar '+%Y-%m-%d %H:%M')"
 
+  local renewal_hook="$PWD/renewal-hooks/deploy/safework-nginx-reload"
+  if [ -f /etc/letsencrypt/live/qianjingguo.asia/fullchain.pem ] && [ -f "$renewal_hook" ]; then
+    install -D -m 0755 "$renewal_hook" /etc/letsencrypt/renewal-hooks/deploy/safework-nginx-reload
+    echo "已安装 Certbot 续期后 Nginx 重载钩子"
+  fi
+
   echo "== 3. 重新构建并启动 =="
   bash start.sh </dev/null
 
