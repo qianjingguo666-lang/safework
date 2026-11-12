@@ -8,6 +8,7 @@ import com.safework.safety.service.SerialNoGenerator;
 import com.safework.system.entity.SysUser;
 import com.safework.system.service.UserService;
 import com.safework.ticket.entity.WorkTicket;
+import com.safework.ticket.mapper.JobPlanMapper;
 import com.safework.ticket.mapper.WorkTicketMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
