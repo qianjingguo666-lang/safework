@@ -51,7 +51,7 @@ WHERE r.deleted = 0
 INSERT INTO job_plan
 (id, tenant_id, plan_no, title, ticket_type, location, work_content, department_name, responsible_id, responsible_name,
  planned_start_time, planned_end_time, status, remark, create_time, update_time)
-SELECT 35001, 1, 'JH20261112-0001', '成品仓库输送带检修', 'MAINTENANCE', '成品仓库西侧', '检查并更换输送带损坏托辊，试运行确认防护罩复位',
+SELECT 35001, 1, 'JH20261112-0001', '成品仓库输送带检修', 'HOT_WORK', '成品仓库西侧', '检查并更换输送带损坏托辊，试运行确认防护罩复位',
        '设备部 / 维修班', 103, '李四（作业负责人）',
        DATE_ADD(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR,
        DATE_ADD(CURDATE(), INTERVAL 1 DAY) + INTERVAL 12 HOUR,
