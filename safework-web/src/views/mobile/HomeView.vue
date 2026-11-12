@@ -12,6 +12,10 @@
       <el-icon><Camera /></el-icon>
       <div><b>随手拍 · 上报隐患</b><span>拍照 + 一句话，AI 帮你填表</span></div>
     </button>
+    <button class="report observation-report" @click="router.push('/m/observation')">
+      <el-icon><View /></el-icon>
+      <div><b>上报未遂事件 / 安全观察</b><span>记录险情、不安全行为和现场安全亮点</span></div>
+    </button>
 
     <div class="m-card">
       <h3>我的待办 <span v-if="total === 0 && h" class="m-muted">　都处理完了 👍</span></h3>
@@ -88,6 +92,7 @@ onMounted(load)
 @keyframes spin { to { transform: rotate(360deg); } }
 .report { width: 100%; display: flex; align-items: center; gap: 14px; border: 0; border-radius: 12px; padding: 16px; margin-bottom: 12px; color: #fff; text-align: left; background: linear-gradient(135deg, #ff7a45, #f5222d); box-shadow: 0 4px 12px rgba(245, 34, 45, .25); }
 .report .el-icon { font-size: 34px; }
+.observation-report { color: #fff; background: linear-gradient(135deg, #3a8ee6, #1f6feb); box-shadow: 0 4px 12px rgba(31, 111, 235, .22); }
 .report b { display: block; font-size: 17px; }
 .report span { font-size: 13px; opacity: .9; }
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
