@@ -69,6 +69,9 @@ public class WorkTicket extends BaseEntity {
 
     private TicketStatus status;
 
+    /** 启用安全交底后，参与人全员签字才能开工 */
+    private Integer briefingRequired;
+
     /** 第几次提交审批（被驳回后重新提交 +1） */
     private Integer approvalRound;
     /** 当前审批到第几个节点（从 0 开始），不在审批中为 null（更新时 null 也要写入数据库） */
