@@ -119,7 +119,7 @@ public class WorkBriefingService {
                 ticket.getJsaTitle(), ticket.getSafetyMeasures()));
         briefing.setStatus(WorkBriefingRules.PENDING);
         briefing.setCreatorId(me);
-        briefing.setCreatorName(creator == null ? StpUtil.getLoginId() : creator.getNickname());
+        briefing.setCreatorName(creator == null ? String.valueOf(StpUtil.getLoginId()) : creator.getNickname());
         mapper.insert(briefing);
 
         for (SysUser user : users) {
