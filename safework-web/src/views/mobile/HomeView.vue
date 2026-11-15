@@ -28,6 +28,7 @@
       </div>
     </div>
 
+    <div v-if="store.hasPerm('ticket:list')" class="m-card"><router-link to="/m/handover">作业交接班</router-link></div>
     <div class="m-card tips">
       <h3>现场扫码</h3>
       <div class="m-muted">用微信或手机相机扫受限空间门口的二维码，可以看到当前作业票和气体检测数据，并能直接上报这个空间的隐患。</div>
@@ -38,12 +39,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import request from '@/api/request'
 import { mobileHome } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { ROLE_NAMES } from '@/utils/dict'
 
 const router = useRouter()
 const store = useUserStore()
+const pendingHandovers = ref(null)
 const h = ref(null)
 const loading = ref(false)
 const hour = new Date().getHours()
@@ -54,6 +57,7 @@ const roleText = computed(() => store.roles.map((r) => ROLE_NAMES[r] || r).join(
 const cards = computed(() => {
   const v = h.value || {}
   return [
+    store.hasPerm('ticket:list') && { key:'handover', label:'待我接班', count:pendingHandovers.value, to:'/m/handover?todo=1', hot:pendingHandovers.value > 0 },
     v.approve != null && { key: 'approve', label: '待我审批', count: v.approve, to: '/m/tickets?tab=todo', hot: v.approve > 0 },
     v.working != null && { key: 'working', label: '我的作业', count: v.working, to: '/m/tickets?tab=mine', sub: '待开工 / 作业中' },
     { key: 'rectify', label: '待我整改', count: v.rectify, to: '/m/hazards?tab=rectify', hot: v.rectifyOverdue > 0, sub: v.rectifyOverdue ? `${v.rectifyOverdue} 条已逾期` : '' },
@@ -75,7 +79,11 @@ const total = computed(() => cards.value.reduce((s, c) => s + (c.count || 0), 0)
 async function load() {
   loading.value = true
   try {
-    h.value = await mobileHome()
+    await Promise.all([
+      mobileHome().then(result => { h.value = result }),
+      store.hasPerm('ticket:list') && request.get('/ticket/handover/page', {params:{awaitingMe:true}})
+        .then(result => { pendingHandovers.value = Number(result.total) })
+    ])
   } finally {
     loading.value = false
   }

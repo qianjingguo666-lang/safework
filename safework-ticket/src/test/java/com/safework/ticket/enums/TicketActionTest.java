@@ -12,10 +12,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TicketActionTest {
 
     @Test
+    void returnForCorrectionRequiresAnotherInspection() {
+        assertEquals(TicketStatus.ACCEPT_PENDING, TicketAction.COMPLETE.getTo());
+        assertTrue(TicketAction.RETURN_FINISH.canFire(TicketStatus.ACCEPT_PENDING));
+        assertFalse(TicketAction.ACCEPT_FINISH.canFire(TicketStatus.ACCEPT_REWORK));
+        assertTrue(TicketAction.COMPLETE.canFire(TicketAction.RETURN_FINISH.getTo()));
+        assertFalse(TicketAction.START.canFire(TicketStatus.ACCEPT_REWORK));
+    }
+
+    @Test
+    void pauseRequiresReviewedResume() {
+        assertTrue(TicketAction.PAUSE.canFire(TicketStatus.IN_PROGRESS));
+        assertFalse(TicketAction.COMPLETE.canFire(TicketStatus.PAUSED));
+        assertFalse(TicketAction.ALLOW_RESUME.canFire(TicketStatus.PAUSED));
+        assertEquals(TicketStatus.RESUME_PENDING, TicketAction.REQUEST_RESUME.getTo());
+        assertTrue(TicketAction.DENY_RESUME.canFire(TicketStatus.RESUME_PENDING));
+        assertEquals(TicketStatus.PAUSED, TicketAction.DENY_RESUME.getTo());
+        assertEquals(TicketStatus.IN_PROGRESS, TicketAction.ALLOW_RESUME.getTo());
+    }
+
+    @Test
     @DisplayName("正常流程：草稿 → 待审批 → 已批准 → 作业中 → 已完成")
     void happyPath() {
         TicketStatus s = TicketStatus.DRAFT;
-        for (TicketAction a : new TicketAction[]{TicketAction.SUBMIT, TicketAction.APPROVE, TicketAction.START, TicketAction.COMPLETE}) {
+        for (TicketAction a : new TicketAction[]{TicketAction.SUBMIT, TicketAction.APPROVE, TicketAction.START, TicketAction.COMPLETE, TicketAction.ACCEPT_FINISH}) {
             assertTrue(a.canFire(s), a + " 应该可以从 " + s + " 执行");
             s = a.getTo();
         }

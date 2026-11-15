@@ -69,18 +69,26 @@
             {{ store.tenantName }}<template v-if="store.tenant?.packageName"> · {{ store.tenant.packageName }}</template>
           </el-tag>
         </el-tooltip>
-        <el-dropdown @command="onCommand">
-          <span class="user">
-            <el-avatar :size="28">{{ store.nickname.slice(0, 1) }}</el-avatar>
-            <span class="name">{{ store.nickname }}</span>
-            <el-icon><ArrowDown /></el-icon>
-          </span>
+        <el-dropdown trigger="click" placement="bottom-end" @command="onCommand">
+          <button type="button" class="user account-trigger" aria-label="打开账户菜单">
+            <el-avatar :size="30">{{ store.nickname.slice(0, 1) }}</el-avatar>
+            <span class="name">{{ store.nickname }}</span><el-icon><ArrowDown /></el-icon>
+          </button>
           <template #dropdown>
+            <div class="account-head">
+              <strong>{{ store.nickname }}</strong>
+              <small>{{ roleText }}</small>
+            </div>
             <el-dropdown-menu>
-              <el-dropdown-item disabled>角色：{{ roleText }}</el-dropdown-item>
-              <el-dropdown-item v-if="!store.isPlatform" command="mobile" divided>手机版</el-dropdown-item>
-              <el-dropdown-item v-if="!demoTip" command="password" :divided="store.isPlatform">修改密码</el-dropdown-item>
-              <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+              <el-dropdown-item v-if="!store.isPlatform" command="todos" icon="List">我的待办</el-dropdown-item>
+              <el-dropdown-item command="profile" icon="User">账户资料</el-dropdown-item>
+              <el-dropdown-item command="messages" icon="Bell">
+                我的消息<span v-if="msg.unread" class="account-count">{{ msg.unread }} 未读</span>
+              </el-dropdown-item>
+              <el-dropdown-item v-if="canOpenApprovals" command="approvals" icon="DocumentChecked">待我审批的作业票</el-dropdown-item>
+              <el-dropdown-item v-if="!store.isPlatform" command="mobile" icon="Cellphone" divided>手机版</el-dropdown-item>
+              <el-dropdown-item v-if="!demoTip" command="password" icon="Lock">修改密码</el-dropdown-item>
+              <el-dropdown-item command="logout" icon="SwitchButton" divided>退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -97,6 +105,17 @@
         </footer>
       </el-main>
     </el-container>
+
+    <el-dialog v-model="profileVisible" title="账户资料" width="min(460px, 92vw)">
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="姓名">{{ store.nickname }}</el-descriptions-item>
+        <el-descriptions-item label="登录账号">{{ store.user?.username }}</el-descriptions-item>
+        <el-descriptions-item label="角色">{{ roleText }}</el-descriptions-item>
+        <el-descriptions-item label="所属组织">{{ store.tenantName }}</el-descriptions-item>
+        <el-descriptions-item v-if="store.tenant?.tenantCode" label="组织编码">{{ store.tenant.tenantCode }}</el-descriptions-item>
+        <el-descriptions-item v-if="store.tenant?.packageName" label="套餐">{{ store.tenant.packageName }}</el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
 
     <el-dialog v-model="pwdVisible" title="修改密码" width="420px">
       <el-form ref="pwdRef" :model="pwd" :rules="pwdRules" label-width="90px">
@@ -209,7 +228,22 @@ async function savePassword() {
   }
 }
 
+const profileVisible = ref(false)
+const canOpenApprovals = computed(() => store.hasPerm('ticket:approve') && router.resolve('/ticket/list').meta.perm === 'ticket:list')
+
 async function onCommand(cmd) {
+  if (cmd === 'todos') return router.push('/my-todos')
+  if (cmd === 'profile') { profileVisible.value = true; return }
+  if (cmd === 'messages') { goMessages(); return }
+  if (cmd === 'approvals') {
+    if (router.currentRoute.value.path === '/ticket/list') {
+      // 列表初始化时读取 todo；同页切换也要重新应用筛选。
+      window.location.assign(router.resolve({path:'/ticket/list', query:{todo:'1'}}).href)
+    } else {
+      router.push({path:'/ticket/list', query:{todo:'1'}})
+    }
+    return
+  }
   if (cmd === 'password') {
     Object.assign(pwd, { oldPassword: '', newPassword: '', confirm: '' })
     pwdVisible.value = true
@@ -230,6 +264,11 @@ async function onCommand(cmd) {
 </script>
 
 <style scoped>
+.account-trigger { background: transparent; border: 0; font: inherit; color: inherit; padding: 4px; }
+.account-head { padding: 12px 16px; min-width: 180px; border-bottom: 1px solid var(--el-border-color-lighter); }
+.account-head strong, .account-head small { display: block; }
+.account-head small { margin-top: 4px; color: var(--el-text-color-secondary); }
+.account-count { margin-left: auto; padding-left: 12px; color: var(--el-color-primary); font-size: 12px; }
 .layout { height: 100vh; }
 .aside { background: #0f1b2d; transition: width .2s; overflow: hidden; display: flex; flex-direction: column; }
 /* 菜单多了以后侧边栏自己滚动：Logo 固定在顶部，菜单区域单独出滚动条 */

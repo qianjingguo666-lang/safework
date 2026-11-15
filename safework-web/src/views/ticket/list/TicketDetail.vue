@@ -152,9 +152,11 @@
       </template>
     </el-dialog>
   </el-drawer>
+  <WorkStateDialog ref="workDialog" :ticket="t" @changed="workChanged"/>
 </template>
 
 <script setup>
+import WorkStateDialog from '@/components/WorkStateDialog.vue'
 import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getTicket, jsaDetail, reviewTicket, ticketAction } from '@/api'
@@ -251,7 +253,10 @@ async function run(action) {
   }
 }
 
+const workDialog = ref(null)
+async function workChanged() { await open(t.value.id); emit('changed') }
 async function runInner(action) {
+  if (['PAUSE','REQUEST_RESUME','ALLOW_RESUME','DENY_RESUME','COMPLETE','ACCEPT_FINISH','RETURN_FINISH'].includes(action)) return workDialog.value.open(action)
   if (action === 'EDIT') {
     visible.value = false
     emit('edit', t.value)

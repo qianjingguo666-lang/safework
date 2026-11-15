@@ -39,9 +39,13 @@ public class TicketNotifier {
             }
             case REJECT -> send(List.of(t.getApplicantId()), me, draft(t, MessageCategory.TODO, "作业票被驳回：" + name,
                     me.getNickname() + " 驳回了你的" + type + "，原因：" + comment + "。修改后可以重新提交"));
+            case REQUEST_RESUME -> send(List.of(t.getResumeReviewerId()), me, draft(t, MessageCategory.TODO, "待审核复工：" + name, comment));
+            case PAUSE, ALLOW_RESUME, DENY_RESUME -> send(List.of(t.getApplicantId(), t.getGuardianId()), me,
+                    draft(t, MessageCategory.NOTICE, action.getLabel() + "：" + name, comment));
             case START -> send(List.of(t.getApplicantId()), me, draft(t, MessageCategory.NOTICE, "已开工：" + name,
                     "监护人 " + me.getNickname() + " 已确认现场安全措施，作业开始"));
-            case COMPLETE -> send(List.of(t.getApplicantId()), me, draft(t, MessageCategory.NOTICE, "已完工：" + name,
+            case ACCEPT_FINISH, RETURN_FINISH -> send(List.of(t.getGuardianId(), t.getApplicantId()), me, draft(t, MessageCategory.NOTICE, action.getLabel() + "：" + name, comment));
+            case COMPLETE -> send(List.of(t.getAcceptanceReviewerId()), me, draft(t, MessageCategory.TODO, "待完工验收：" + name,
                     withComment("监护人 " + me.getNickname() + " 确认作业完成", comment)));
             default -> {
                 // 新建、修改、取消不通知

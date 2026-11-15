@@ -38,14 +38,23 @@ main() {
     local title="$1" body="$2" url
     if [ -z "$key" ]; then
       log "没有配置 WECHAT_SENDKEY，只记录不推送：$title"
-      return 0
+      return 1
     fi
-    if [[ "$key" == sctp* ]]; then url="https://${key}.push.ft07.com/send"; else url="https://sctapi.ftqq.com/${key}.send"; fi
-    local resp
-    resp=$(curl -s --max-time 15 -X POST "$url" --data-urlencode "title=$title" --data-urlencode "desp=$body" </dev/null || echo "curl 失败")
-    log "推送：$title → $(echo "$resp" | head -c 200)"
+    if [[ "$key" =~ ^sctp([0-9]+)t ]]; then
+      url="https://${BASH_REMATCH[1]}.push.ft07.com/send/${key}.send"
+    else
+      url="https://sctapi.ftqq.com/${key}.send"
+    fi
+    local resp rc
+    resp=$(curl -fs --max-time 15 -X POST "$url" --data-urlencode "title=$title" --data-urlencode "desp=$body" </dev/null)
+    rc=$?
+    if [ "$rc" != 0 ]; then log "推送失败：$title，curl 退出码 $rc"; return 1; fi
+    if ! python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("code") in (0,"0") else 1)' <<<"$resp" 2>/dev/null; then
+      log "推送失败：$title，接口未返回成功码"
+      return 1
+    fi
+    log "推送：$title → 服务已接受"
   }
-
   local host
   host=$(curl -s --max-time 3 http://100.100.100.200/latest/meta-data/eipv4 2>/dev/null </dev/null || true)
   [ -z "$host" ] && host=$(hostname)
@@ -107,12 +116,33 @@ main() {
     if [ -f demo/reset.log ]; then
       age=$(( ($(date +%s) - $(stat -c %Y demo/reset.log)) / 3600 ))
       [ "$age" -gt 26 ] && warnings+=("演示数据 ${age} 小时没有恢复过，每天 4 点的恢复可能没执行")
-      tail -3 demo/reset.log | grep -q "恢复完成" || warnings+=("最近一次演示数据恢复没有成功，见 demo/reset.log")
+      tail -3 demo/reset.log | grep -Eq "恢复完成|每日演示数据补充完成" || warnings+=("最近一次演示数据恢复没有成功，见 demo/reset.log")
     else
       warnings+=("演示模式已打开，但没有找到恢复日志 demo/reset.log")
     fi
   fi
 
+  send_daily() {
+    local all=("${problems[@]}" "${warnings[@]}") summary=""
+    if [ "${#all[@]}" -gt 0 ]; then summary=1; fi
+    push "SafeWork 日报 $(date +%m-%d)：$([ -z "$summary" ] && echo 一切正常 || echo 有 ${#all[@]} 个问题)" \
+      "$(printf '服务器：%s\n\n- 网站首页：HTTP %s\n- 后端：%s\n- 磁盘已用 %s%%，可用内存 %s MB\n- 最近备份：%s\n- 运行时间：%s' \
+        "$host" "$code" "$([ "$backend_ok" = 1 ] && echo 正常 || echo 异常)" "$disk" "$mem" "${latest#backups/}" "$(uptime -p)")"
+  }
+  local today last_attempt stamp
+  today=$(date +%F)
+  stamp=$(date +%s)
+  last_attempt=$(st_get daily_attempt)
+  if [ "$mode" = "daily" ] || { [ "$mode" = "check" ] && [ "$(date +%H)" -ge 9 ] && [ "$(st_get daily)" != "$today" ] && [ $((stamp - ${last_attempt:-0})) -ge 900 ]; }; then
+    st_set daily_attempt "$stamp"
+    if send_daily; then
+      st_set daily "$today"
+    elif [ "$mode" = "daily" ]; then
+      st_set daily ""
+      return 1
+    fi
+    if [ "$mode" = "daily" ]; then return 0; fi
+  fi
   if [ "$mode" = "status" ]; then
     echo "服务器：$host"
     echo "网站首页：HTTP $code"
@@ -179,16 +209,6 @@ main() {
       push "【恢复】SafeWork 已恢复正常" "服务器：$host，时间：$(date '+%F %T')。所有检查都通过了。"
       st_set summary ""
     fi
-  fi
-
-  # ---------- 每天 9 点一条日报：知道看门狗本身还活着 ----------
-  local today
-  today=$(date +%F)
-  if [ "$(date +%H)" = "09" ] && [ "$(st_get daily)" != "$today" ]; then
-    st_set daily "$today"
-    push "SafeWork 日报 $(date +%m-%d)：$([ -z "$summary" ] && echo 一切正常 || echo 有 ${#all[@]} 个问题)" \
-      "$(printf '服务器：%s\n\n- 网站首页：HTTP %s\n- 后端：%s\n- 磁盘已用 %s%%，可用内存 %s MB\n- 最近备份：%s\n- 运行时间：%s' \
-        "$host" "$code" "$([ "$backend_ok" = 1 ] && echo 正常 || echo 异常)" "$disk" "$mem" "${latest#backups/}" "$(uptime -p)")"
   fi
 
   # 日志只保留最近 3000 行

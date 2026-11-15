@@ -27,6 +27,7 @@ const routes = [
       { path: 'hazards', component: () => import('@/views/mobile/HazardsView.vue'), meta: { title: '隐患', tab: true } },
       { path: 'hazard/:id', component: () => import('@/views/mobile/HazardView.vue'), meta: { title: '隐患详情', back: true, backTo: '/m/hazards' } },
       { path: 'report', component: () => import('@/views/mobile/ReportView.vue'), meta: { title: '上报隐患', back: true } },
+      { path: 'handover', component: () => import('@/views/ticket/handover/index.vue'), meta: { title: '作业交接班', back: true } },
       { path: 'observation', component: () => import('@/views/mobile/ObservationView.vue'), meta: { title: '未遂事件与安全观察', back: true } },
       { path: 'meeting', component: () => import('@/views/mobile/MeetingView.vue'), meta: { title: '班前会', back: true } },
       { path: 'moc', component: () => import('@/views/mobile/MocView.vue'), meta: { title: '变更审批', back: true } },
@@ -56,6 +57,7 @@ const routes = [
     children: [
       { path: 'home', component: () => import('@/views/home/index.vue'), meta: { title: '首页' } },
       // 消息中心：所有登录用户都有，不走菜单权限
+      { path: 'my-todos', component: () => import('@/views/personal/Todos.vue'), meta: { title: '我的待办' } },
       { path: 'message', component: () => import('@/views/message/index.vue'), meta: { title: '消息中心' } },
       { path: '403', component: () => import('@/views/error/403.vue'), meta: { title: '无权限' } }
     ]

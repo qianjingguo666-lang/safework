@@ -167,6 +167,20 @@ public class TicketController {
         return R.ok();
     }
 
+    @PostMapping("/{id}/{change:pause|request_resume|allow_resume|deny_resume|accept_finish|return_finish}")
+    @SaCheckPermission("ticket:list")
+    @OperLog(module = "作业票", action = "作业状态与验收")
+    public R<Void> changeWorkState(@PathVariable Long id, @PathVariable String change, @RequestBody TicketActionDTO dto) {
+        ticketService.changeWorkState(id, com.safework.ticket.enums.TicketAction.valueOf(change.toUpperCase(java.util.Locale.ROOT)), dto);
+        return R.ok();
+    }
+
+    @GetMapping("/resume-reviewers")
+    @SaCheckPermission("ticket:list")
+    public R<java.util.List<TicketService.Reviewer>> resumeReviewers() {
+        return R.ok(ticketService.resumeReviewers());
+    }
+
     private static TicketActionDTO orEmpty(TicketActionDTO dto) {
         return dto == null ? new TicketActionDTO() : dto;
     }

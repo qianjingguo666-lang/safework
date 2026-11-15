@@ -10,6 +10,9 @@ export const TICKET_STATUS = {
   DRAFT: { label: '草稿', type: 'info' },
   PENDING: { label: '待审批', type: 'warning' },
   APPROVED: { label: '已批准', type: 'primary' },
+  ACCEPT_PENDING:{label:'待完工验收',type:'warning'}, ACCEPT_REWORK:{label:'验收待整改',type:'danger'},
+  PAUSED: { label:'已暂停', type:'danger' },
+  RESUME_PENDING: { label:'待复工审核', type:'warning' },
   IN_PROGRESS: { label: '作业中', type: 'danger' },
   COMPLETED: { label: '已完成', type: 'success' },
   REJECTED: { label: '已驳回', type: 'danger' },
@@ -23,7 +26,8 @@ export const TICKET_ACTIONS = {
   APPROVE: '审批通过',
   REJECT: '驳回',
   START: '开始作业',
-  COMPLETE: '作业完成',
+  PAUSE:'暂停作业', REQUEST_RESUME:'申请复工', ALLOW_RESUME:'同意复工', DENY_RESUME:'退回复工申请',
+  COMPLETE: '作业完工', ACCEPT_FINISH:'验收通过', RETURN_FINISH:'退回整改',
   CANCEL: '取消'
 }
 

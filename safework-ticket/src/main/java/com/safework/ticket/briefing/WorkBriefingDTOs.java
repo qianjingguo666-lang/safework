@@ -29,5 +29,6 @@ public final class WorkBriefingDTOs {
         private long size = 20;
         private String status;
         private String keyword;
+        private boolean awaitingMe;
     }
 }

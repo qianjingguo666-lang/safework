@@ -79,6 +79,7 @@
 </template>
 
 <script setup>
+import { useRoute } from 'vue-router'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
@@ -146,7 +147,9 @@ async function sign() {
     await load()
   } finally { signing.value = false }
 }
+const route = useRoute()
 onMounted(async () => {
+  if (route.query.detail) await openDetail(route.query.detail)
   const [ticketPage, userList] = await Promise.all([
     pageTickets({ current: 1, size: 100, status: 'APPROVED' }),
     userOptions()

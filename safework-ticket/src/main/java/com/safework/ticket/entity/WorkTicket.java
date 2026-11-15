@@ -49,6 +49,8 @@ public class WorkTicket extends BaseEntity {
     private String contractorWorkerIds;
     @TableField(updateStrategy = FieldStrategy.IGNORED)
     private String contractorWorkerNames;
+    private Long acceptanceReviewerId;
+    private Long resumeReviewerId;
     private Long approverId;
     private String approverName;
     /** 引用的作业安全分析（JSA） */

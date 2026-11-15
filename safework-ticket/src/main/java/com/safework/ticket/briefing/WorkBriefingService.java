@@ -46,17 +46,19 @@ public class WorkBriefingService {
         boolean manager = StpUtil.hasPermission(PERM_MANAGE);
         Long me = StpUtil.getLoginIdAsLong();
         List<Long> myBriefingIds = List.of();
-        if (!manager) {
+        boolean personal = !manager || q.isAwaitingMe();
+        if (personal) {
             myBriefingIds = attendeeMapper.selectList(Wrappers.<WorkBriefingAttendee>lambdaQuery()
                             .select(WorkBriefingAttendee::getBriefingId)
-                            .eq(WorkBriefingAttendee::getParticipantId, me))
+                            .eq(WorkBriefingAttendee::getParticipantId, me)
+                            .isNull(q.isAwaitingMe(), WorkBriefingAttendee::getSignedTime))
                     .stream().map(WorkBriefingAttendee::getBriefingId).distinct().toList();
             if (myBriefingIds.isEmpty()) return new Page<>(current, size, 0);
         }
         String keyword = q.getKeyword();
         var source = mapper.selectPage(new Page<WorkBriefing>(current, size), Wrappers.<WorkBriefing>lambdaQuery()
                 .eq(StringUtils.hasText(q.getStatus()), WorkBriefing::getStatus, q.getStatus())
-                .in(!manager, WorkBriefing::getId, myBriefingIds)
+                .in(personal, WorkBriefing::getId, myBriefingIds)
                 .and(StringUtils.hasText(keyword), w -> w.like(WorkBriefing::getTicketNo, keyword)
                         .or().like(WorkBriefing::getTitle, keyword))
                 .orderByDesc(WorkBriefing::getCreateTime));

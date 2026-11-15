@@ -24,6 +24,8 @@ public record TicketVerdict(String level, String text) {
             case IN_PROGRESS -> expired
                     ? new TicketVerdict(DANGER, "作业已超过计划结束时间，请立即核实现场人员安全")
                     : new TicketVerdict(OK, "有效：作业中");
+            case PAUSED, RESUME_PENDING -> new TicketVerdict(DANGER, status.getLabel() + "，禁止作业");
+            case ACCEPT_PENDING, ACCEPT_REWORK -> new TicketVerdict(DANGER, status.getLabel() + "，不能继续作业");
             case COMPLETED -> new TicketVerdict(WARN, "作业已完工关闭，不能再用这张票作业");
             case CANCELLED -> new TicketVerdict(DANGER, "作业票已作废，不能作业");
             case DRAFT, PENDING, REJECTED -> new TicketVerdict(DANGER, "作业票未批准（" + status.getLabel() + "），不能作业");

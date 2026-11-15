@@ -122,6 +122,6 @@ public class OperLogAspect {
     }
 
     private static String truncate(String s, int max) {
-        return s == null || s.length() <= max ? s : s.substring(0, max) + "...";
+        return s == null || s.length() <= max ? s : s.substring(0, max - 3) + "...";
     }
 }

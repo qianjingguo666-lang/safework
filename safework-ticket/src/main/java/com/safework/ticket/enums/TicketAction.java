@@ -33,7 +33,13 @@ public enum TicketAction {
     APPROVE("审批通过", EnumSet.of(PENDING), APPROVED),
     REJECT("驳回", EnumSet.of(PENDING), REJECTED),
     START("开始作业", EnumSet.of(APPROVED), IN_PROGRESS),
-    COMPLETE("作业完成", EnumSet.of(IN_PROGRESS), COMPLETED),
+    PAUSE("暂停作业", EnumSet.of(IN_PROGRESS), TicketStatus.PAUSED),
+    REQUEST_RESUME("申请复工", EnumSet.of(TicketStatus.PAUSED), TicketStatus.RESUME_PENDING),
+    ALLOW_RESUME("同意复工", EnumSet.of(TicketStatus.RESUME_PENDING), IN_PROGRESS),
+    DENY_RESUME("退回复工申请", EnumSet.of(TicketStatus.RESUME_PENDING), TicketStatus.PAUSED),
+    COMPLETE("提交完工", EnumSet.of(IN_PROGRESS, TicketStatus.ACCEPT_REWORK), TicketStatus.ACCEPT_PENDING),
+    ACCEPT_FINISH("验收通过", EnumSet.of(TicketStatus.ACCEPT_PENDING), COMPLETED),
+    RETURN_FINISH("退回整改", EnumSet.of(TicketStatus.ACCEPT_PENDING), TicketStatus.ACCEPT_REWORK),
     CANCEL("取消", EnumSet.of(DRAFT, PENDING, REJECTED, APPROVED), CANCELLED);
 
     private final String label;

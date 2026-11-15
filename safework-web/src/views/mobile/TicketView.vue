@@ -113,9 +113,11 @@
       </el-form>
     </el-drawer>
   </div>
+  <WorkStateDialog ref="workDialog" :ticket="t" @changed="workChanged"/>
 </template>
 
 <script setup>
+import WorkStateDialog from '@/components/WorkStateDialog.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -137,7 +139,7 @@ const briefingPad = ref()
 const briefingSigning = ref(false)
 const mineBriefing = computed(() => briefing.value?.attendees?.find((a) => a.mine))
 // 按钮由后端返回的 actions 决定；修改作业票表单太复杂，留在电脑端
-const ORDER = ['APPROVE', 'START', 'COMPLETE', 'SUBMIT', 'REJECT', 'CANCEL']
+const ORDER = ['ACCEPT_FINISH','RETURN_FINISH','PAUSE','REQUEST_RESUME','ALLOW_RESUME','DENY_RESUME','APPROVE', 'START', 'COMPLETE', 'SUBMIT', 'REJECT', 'CANCEL']
 const mobileActions = computed(() => ORDER.filter((a) => actions.value.includes(a)))
 const BTN = { SUBMIT: 'primary', APPROVE: 'success', REJECT: 'danger', START: 'warning', COMPLETE: 'success', CANCEL: 'info' }
 const SIGN_ACTIONS = ['SUBMIT', 'APPROVE', 'START', 'COMPLETE']
@@ -183,7 +185,10 @@ const act = ref('')
 const busy = ref(false)
 const padRef = ref()
 const form = reactive({})
+const workDialog = ref(null)
+async function workChanged() { await load() }
 function openAct(a) {
+  if (['PAUSE','REQUEST_RESUME','ALLOW_RESUME','DENY_RESUME','COMPLETE','ACCEPT_FINISH','RETURN_FINISH'].includes(a)) return workDialog.value.open(a)
   act.value = a
   Object.assign(form, { comment: '', gasOxygen: '', gasLel: '', gasH2s: '' })
   sheet.value = true

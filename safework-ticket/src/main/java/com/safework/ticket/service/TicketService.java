@@ -76,6 +76,10 @@ public class TicketService {
         boolean viewAll = StpUtil.hasPermission(PERM_APPROVE);
         String kw = q.getKeyword();
         Page<WorkTicket> page = ticketMapper.selectPage(new Page<>(q.getCurrent(), q.getSize()), Wrappers.<WorkTicket>lambdaQuery()
+                .eq(Boolean.TRUE.equals(q.getAcceptanceTodo()), WorkTicket::getAcceptanceReviewerId, me)
+                .eq(Boolean.TRUE.equals(q.getAcceptanceTodo()), WorkTicket::getStatus, TicketStatus.ACCEPT_PENDING)
+                .eq(Boolean.TRUE.equals(q.getResumeTodo()), WorkTicket::getResumeReviewerId, me)
+                .eq(Boolean.TRUE.equals(q.getResumeTodo()), WorkTicket::getStatus, TicketStatus.RESUME_PENDING)
                 .eq(q.getStatus() != null, WorkTicket::getStatus, q.getStatus())
                 .eq(q.getTicketType() != null, WorkTicket::getTicketType, q.getTicketType())
                 .and(StringUtils.hasText(kw), w -> w
@@ -273,8 +277,87 @@ public class TicketService {
         SysUser me = currentUser();
         WorkTicket t = load(id);
         requireGuardian(t, me);
-        t.setActualEndTime(LocalDateTime.now());
+        checkCanFire(t, TicketAction.COMPLETE);
+        Long reviewer = dto.getAcceptanceReviewerId();
+        SysUser target = reviewer == null ? null : userService.getById(reviewer);
+        if (target == null || reviewer.equals(me.getId()) || !Integer.valueOf(1).equals(target.getStatus())
+                || !permissionService.getPermissions(reviewer).contains(PERM_APPROVE))
+            throw new BizException("请选择另一位有审批权限的在用员工作为验收人");
+        if (!StringUtils.hasText(dto.getComment()) || dto.getComment().length() > 350)
+            throw new BizException("请填写完工或整改记录（最多350字）");
+        t.setAcceptanceReviewerId(reviewer);
+        dto.setComment("验收人：" + target.getNickname() + "；" + dto.getComment().strip());
+        if (t.getStatus() == TicketStatus.IN_PROGRESS) t.setActualEndTime(LocalDateTime.now());
         fire(t, TicketAction.COMPLETE, me, dto.getComment(), sign);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void changeWorkState(Long id, TicketAction action, TicketActionDTO dto) {
+        WorkTicket t = load(id);
+        SysUser me = currentUser();
+        checkCanFire(t, action);
+        String comment = dto.getComment();
+        if (!StringUtils.hasText(comment) || comment.length() > 450)
+            throw new BizException("请填写原因或处理意见（最多450字）");
+        switch (action) {
+            case ACCEPT_FINISH, RETURN_FINISH -> {
+                if (!me.getId().equals(t.getAcceptanceReviewerId()) || !StpUtil.hasPermission(PERM_APPROVE))
+                    throw new BizException("仅指定验收人可处理");
+                if (action == TicketAction.ACCEPT_FINISH) {
+                    if (!java.util.Set.of("personnel", "tools", "site").equals(dto.getCheckedItems()))
+                        throw new BizException("请逐项确认人员撤离、工具清点、现场清理");
+                    comment = "已确认人员撤离、工具清点、现场清理；" + comment;
+                }
+            }
+            case PAUSE -> {
+                if (!me.getId().equals(t.getApplicantId()) && !me.getId().equals(t.getGuardianId()))
+                    throw new BizException("仅作业负责人或监护人可暂停作业");
+            }
+            case REQUEST_RESUME -> {
+                if (!me.getId().equals(t.getApplicantId())) throw new BizException("仅负责人可申请复工");
+                Long reviewer = dto.getResumeReviewerId();
+                SysUser target = reviewer == null ? null : userService.getById(reviewer);
+                if (target == null || !Integer.valueOf(1).equals(target.getStatus()) || reviewer.equals(me.getId())
+                        || !permissionService.getPermissions(reviewer).contains(PERM_APPROVE))
+                    throw new BizException("请选择本企业另一位有审批权限的在用员工");
+                t.setResumeReviewerId(reviewer);
+                comment = "审核人：" + target.getNickname() + "；" + comment;
+                if (t.getTicketType().isGasRequired()) {
+                    if (dto.getGasOxygen() == null || dto.getGasLel() == null || dto.getGasH2s() == null)
+                        throw new BizException("请填写本次现场复测的三项气体数据");
+                    t.setGasOxygen(dto.getGasOxygen());
+                    t.setGasLel(dto.getGasLel());
+                    t.setGasH2s(dto.getGasH2s());
+                    t.setGasCheckTime(LocalDateTime.now());
+                    GasChecker.checkFresh(t);
+                }
+            }
+            case DENY_RESUME, ALLOW_RESUME -> {
+                if (!me.getId().equals(t.getResumeReviewerId()) || me.getId().equals(t.getApplicantId())
+                        || !StpUtil.hasPermission(PERM_APPROVE)) throw new BizException("仅指定审核人可处理复工申请");
+                if (action == TicketAction.ALLOW_RESUME) {
+                    if (!LocalDateTime.now().isBefore(t.getPlanEndTime())) throw new BizException("票已到期，不能复工");
+                    if (t.getTicketType().isGasRequired()) GasChecker.checkFresh(t);
+                    if (Integer.valueOf(1).equals(t.getBriefingRequired())) workBriefingService.requireComplete(id);
+                    checkSpaceConflict(t);
+                    certService.requireQualified(t.getTicketType().name(), t.getApplicantId(), t.getGuardianId(), t.getPlanEndTime());
+                    contractorService.requireEligible(t.getTicketType().name(), t.getContractorId(),
+                            ContractorService.parseIds(t.getContractorWorkerIds()), t.getPlanEndTime());
+                }
+            }
+            default -> throw new BizException("不支持的操作");
+        }
+        if (comment.length() > 500) throw new BizException("处理意见过长，请缩短后提交");
+        fire(t, action, me, comment);
+    }
+
+    public record Reviewer(Long id, String nickname) {}
+
+    public List<Reviewer> resumeReviewers() {
+        Long me = StpUtil.getLoginIdAsLong();
+        var eligible = new java.util.HashSet<>(userService.listUserIdsWithPermission(PERM_APPROVE));
+        return userService.options().stream().filter(u -> eligible.contains(u.getId()) && !u.getId().equals(me))
+                .map(u -> new Reviewer(u.getId(), u.getNickname())).toList();
     }
 
     // ========================= 内部方法 =========================
@@ -291,7 +374,7 @@ public class TicketService {
         List<WorkTicket> conflicts = ticketMapper.selectList(Wrappers.<WorkTicket>lambdaQuery()
                 .eq(WorkTicket::getSpaceId, t.getSpaceId())
                 .ne(WorkTicket::getId, t.getId())
-                .in(WorkTicket::getStatus, TicketStatus.APPROVED, TicketStatus.IN_PROGRESS)
+                .in(WorkTicket::getStatus, TicketStatus.APPROVED, TicketStatus.IN_PROGRESS, TicketStatus.PAUSED, TicketStatus.RESUME_PENDING, TicketStatus.ACCEPT_PENDING, TicketStatus.ACCEPT_REWORK)
                 .lt(WorkTicket::getPlanStartTime, t.getPlanEndTime())
                 .gt(WorkTicket::getPlanEndTime, t.getPlanStartTime()));
         if (!conflicts.isEmpty()) {
@@ -341,6 +424,10 @@ public class TicketService {
                 case EDIT, SUBMIT, CANCEL -> isApplicant && canAdd;
                 case APPROVE, REJECT -> canApprove && !isApplicant && approvalService.isMyTurn(t, me);
                 case START, COMPLETE -> isGuardian;
+                case PAUSE -> isApplicant || isGuardian;
+                case REQUEST_RESUME -> isApplicant;
+                case DENY_RESUME, ALLOW_RESUME -> canApprove && !isApplicant && me.equals(t.getResumeReviewerId());
+                case ACCEPT_FINISH, RETURN_FINISH -> canApprove && me.equals(t.getAcceptanceReviewerId());
                 case CREATE -> false;
             };
             if (allowed) {
