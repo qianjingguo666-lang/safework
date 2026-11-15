@@ -500,8 +500,8 @@ safework
 - **辨识计算**（`ChemRules.identify`，有单元测试）：演示罐区甲醇 3000/500 + 苯 200/50 + 汽油 400/200 = 12，500 m 内 120 人 α = 2，R = 24 → 三级；危化品仓库液氯 2/5 + 液化石油气 30/50 恰好 = 1 → 构成（边界值），R = 1.2 ×（4 × 0.4 + 1.5 × 0.6）= 3 → 四级。同时显示“按当前库存”的 S 做参考
 - **临界量和 β 可维护**：标准表 1 的具体物质、表 2 的类别临界量、表 3 的毒性气体校正系数（硫化氢 5、氯 4、氨 2）在目录里填；不在标准里的（如氢氧化钠）临界量留空，不参与辨识
 - **出入库并发安全**：库存按“变动前的值”条件更新（`UPDATE … WHERE qty = 变动前`），两个人同时出库，后提交的失败重试，不会扣成负数；出库不能超过库存、必须写用途；盘点直接改成实际数量，流水记差值
-- **超储**：入库后超过设计最大储量照样入库（东西已经到了），但标红并提醒管理员；每天 9:25 汇总超储（定时任务 `chem-stock`）——超储会改变重大危险源辨识结论
-- **MSDS**：复用附件模块（`ChemAccessChecker`），能看危化品的人都能查 MSDS，只有管理员能上传
+- **超储**：入库后超过设计最大储量照样入库（东西已经到了），但标红并提醒管理员；每天 9:25 汇总超储（定时任务 `chem-stock`）。库存变化会更新超储提示和按当前库存计算的参考值；按设计最大储量计算的结果取决于单元的配置。
+- **MSDS**：复用附件模块（`ChemAccessChecker`），查看 MSDS 需要危化品查看权限；上传需要 `chem:edit` 权限
 - **联动**：手机端“危化品出入库”（单元负责人在现场办理）、首页超储待办；安全大屏增加“危化品超过设计最大储量”预警
 
 ## 变更管理（MOC）
@@ -934,7 +934,7 @@ safework
 
 ### 持续集成（GitHub Actions）
 
-每次 push 到 GitHub 自动运行：后端 `mvn verify`（编译 + 全部单元测试），前端 `npm ci && npm run build`。结果看仓库的 **Actions** 页面，README 顶部的徽章显示最近一次是否通过。
+向 `main` 或 `master` 推送，或打开、更新拉取请求时，GitHub Actions 自动运行：后端 `mvn verify`（编译 + 全部单元测试），前端 `npm ci && npm run build`。结果看仓库的 **Actions** 页面，README 顶部的徽章显示最近一次是否通过。
 
 ## 安全培训考试
 
@@ -1207,7 +1207,12 @@ notepad config\secret.yml
 | POST | /ai/question/generate | AI 根据制度文件出题（待审核入库） | training:question:ai |
 | GET / POST / PUT | /training/exam/page、/training/exam、/{id}/publish、/{id}/close | 考试管理 | training:exam:list、edit |
 | GET | /training/exam/{id}/stats、/records、/export | 成绩统计、答卷、导出 | training:exam:list |
-| GET / POST / PUT | /training/my/exams、/exams/{id}/start、/record/{id}/answers、/submit、/result | 我的考试：开始、保存、交卷、成绩 | training:my |
+| GET | /training/my/exams | 我的考试列表 | training:my |
+| POST | /training/my/exams/{examId}/start | 开始考试 | training:my |
+| GET | /training/my/record/{id}/paper | 读取本次答卷 | training:my |
+| PUT | /training/my/record/{id}/answers | 保存答案 | training:my |
+| POST | /training/my/record/{id}/submit | 交卷 | training:my |
+| GET | /training/my/record/{id}/result | 查询本次成绩 | training:my |
 | POST | /safety/emergency | 事故快报 | emergency:event:report |
 | GET | /safety/emergency/page、/overview、/{id} | 应急事件列表 / 概览 / 详情（含处置记录、可执行操作） | emergency:event:list |
 | POST | /safety/emergency/{id}/start、/log、/close | 启动响应 / 处置记录 / 结束 | emergency:event:handle |
@@ -1245,7 +1250,7 @@ notepad config\secret.yml
 | POST | /safety/ppe/issue、/issue/batch | 发放登记、一键补发（库存不够一件不发） | ppe:edit |
 | POST / PUT | /safety/ppe/item、/item/{id}、/item/{id}/stock-in、/item/{id}/status | 用品目录、入库、启停 | ppe:edit |
 | GET / POST / PUT | /safety/ppe/post/list、/post、/post/{id}、/post/{id}/status | 岗位（人员 + 发放标准） | ppe:edit |
-| GET | /safety/health/ledger、/overview、/exam/page、/factor/list | 监护台账、统计、体检记录、危害因素（管理员看全部，其他人只看自己的） | health:list |
+| GET | /safety/health/ledger、/overview、/exam/page、/factor/list | 监护台账、统计、体检记录、危害因素目录。人员体检数据按本人范围过滤，有 `health:edit` 权限可查看本企业全部 | health:list |
 | GET | /safety/health/mine | 我的职业健康 | 登录即可 |
 | POST | /safety/health/exam、/exam/{id}/handle | 登记体检（异常进入待处理）、登记处理措施 | health:edit |
 | POST / PUT | /safety/health/factor、/factor/{id}、/factor/{id}/status | 危害因素 | health:edit |
@@ -1267,7 +1272,7 @@ notepad config\secret.yml
 | GET | /safety/chem/store/list、/store/{id} | 存储单元 + 重大危险源辨识结果 | chem:list |
 | GET | /safety/chem/store/mine | 我负责的单元（手机端出入库） | 登录即可 |
 | POST / PUT / DELETE | /safety/chem/store、/store/{id}、/store/{id}/status、/store/{id}/stock、/stock/{stockId} | 存储单元、存放的危化品和最大储量 | chem:edit |
-| POST | /safety/chem/stock/{stockId}/flow | 入库 / 出库 / 盘点 | 单元负责人或管理员 |
+| POST | /safety/chem/stock/{stockId}/flow | 入库 / 出库 / 盘点 | 单元负责人或有 `chem:edit` 权限的用户 |
 | GET | /safety/chem/flow/page | 出入库流水 | chem:list |
 | GET | /safety/moc/options、/overview、/page、/{id} | 字典、统计、列表（todo=true 只看要我处理的）、详情（含我能做的操作） | moc:list |
 | POST / PUT | /safety/moc、/{id}、/{id}/submit、/{id}/cancel、/{id}/implemented、/{id}/restore | 申请人：新建、修改草稿、提交、取消、实施完成、临时变更恢复 | moc:list（申请人本人） |
